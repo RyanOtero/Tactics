@@ -7,9 +7,20 @@ public class ItemDisplay : MonoBehaviour {
     public Sprite sprite;
 
     void Start() {
-        Material mat = gameObject.GetComponentInChildren<Renderer>().material;
-        mat = Resources.Load<Material>("Materials/Item");
+        Renderer renderer = gameObject.GetComponentInChildren<Renderer>();
+        Material mat = new Material(Shader.Find("Standard"));
+        mat.SetFloat("_Mode", 1);
+        mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.SetInt("_ZWrite", 0);
+        mat.DisableKeyword("_ALPHATEST_ON");
+        mat.EnableKeyword("_ALPHABLEND_ON");
+        mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+        mat.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
+        mat.renderQueue = 3103;
         mat.SetTexture("_MainTex", sprite.texture);
+        renderer.material = mat;
     }
 }
 
