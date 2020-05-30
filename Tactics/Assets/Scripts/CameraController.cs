@@ -38,6 +38,7 @@ public class CameraController : MonoBehaviour {
         camTrans = cam.transform;
         cursorTrans = GameObject.FindGameObjectWithTag("Cursor").transform;
         cameraParentTrans.position = cursorTrans.position + new Vector3(0f, -1.25f, 0f);
+        InputManager.lastCameraPosition = Camera.main.transform.position;
         SetThresholds(.35f, .65f);
     }
 

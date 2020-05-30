@@ -123,13 +123,13 @@ public class CanvasManager : MonoBehaviour {
     public void SetActiveCanvas(string canvasTypeToSwitchTo, int bttnIndex) {
         if (activeCanvas == null || !activeCanvas.name.ToLower().Contains(canvasTypeToSwitchTo.ToLower())) {
             GameObject canvasToSwitchTo = null;
+            InputManager.CleanButtonList();
             canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
             StartCoroutine(FadeUIElement(activeCanvas, canvasToSwitchTo));
             previousButtonIndex = buttonIndex;
             buttonIndex = bttnIndex;
             UpdatePreviousCanvas();
             Destroy(activeCanvas);
-            InputManager.CleanButtonList();
             activeCanvas = canvasToSwitchTo;
         }
     }
@@ -137,6 +137,7 @@ public class CanvasManager : MonoBehaviour {
     public void SetActiveCanvas(string canvasTypeToSwitchTo) {
         if (activeCanvas == null || !activeCanvas.name.ToLower().Contains(canvasTypeToSwitchTo.ToLower())) {
             GameObject canvasToSwitchTo = null;
+            InputManager.CleanButtonList();
             canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
             StartCoroutine(FadeUIElement(activeCanvas, canvasToSwitchTo));
             if (canvasToSwitchTo != null) {
@@ -147,7 +148,6 @@ public class CanvasManager : MonoBehaviour {
             }
             UpdatePreviousCanvas();
             Destroy(activeCanvas);
-            InputManager.CleanButtonList();
             activeCanvas = canvasToSwitchTo;
         }
     }
@@ -158,9 +158,9 @@ public class CanvasManager : MonoBehaviour {
         previousCanvas = activeCanvas.name.ToLower().Replace("menucanvas(clone)","");
         buttonIndex = 0;
         GameObject canvasToSwitchTo = null;
+        InputManager.CleanButtonList();
         canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
         Destroy(activeCanvas);
-        InputManager.CleanButtonList();
         activeCanvas = canvasToSwitchTo;
         CanvasGroup cg = activeCanvas.GetComponent<CanvasGroup>();
         if (cg != null) cg.alpha = 1;
@@ -287,7 +287,7 @@ public class CanvasManager : MonoBehaviour {
         return canvas;
     }
 
-    #region Menu Navigation Handling
+  
 
     public IEnumerator WaitToChangeIndex() {
         yield return new WaitForSeconds(fadeSpeed / 5 + .015f);
@@ -319,6 +319,8 @@ public class CanvasManager : MonoBehaviour {
 
     }
 
+  #region Menu Navigation Handling
+ 
     //handling horizontal input on options menu
     public void NavOptions() {
         if (!IsInputLocked) {
@@ -370,6 +372,7 @@ public class CanvasManager : MonoBehaviour {
             if (InputManager.contextButtonList.Count > 1) {
                 if (InputManager.contextButtonList[buttonIndex].IsEnabled == false) {
                     buttonIndex++;
+                    LoopIndex();
                 }
             }
             if (InputManager.GoingNorth(InputManager.deadZone) && !isHeld) {

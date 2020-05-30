@@ -19,6 +19,7 @@ public class PathNavigationController : MonoBehaviour {
     Vector3 erel;
     float delay;
     public float threshold;
+    public static Vector3 startRotation;
     
     void Awake() {
         i = 1;
@@ -45,6 +46,20 @@ public class PathNavigationController : MonoBehaviour {
             //increment the timer
             time += Time.deltaTime;
 
+            //handle unit rotation
+            if (transform.position.x == nextPoint.x) {
+                if (transform.position.z > nextPoint.z) {
+                    transform.eulerAngles = new Vector3(0, 180f, 0);
+                } else if (transform.position.z < nextPoint.z) {
+                    transform.eulerAngles = new Vector3(0, 0, 0);
+                }
+            } else if (transform.position.z == nextPoint.z) {
+                if (transform.position.x > nextPoint.x) {
+                    transform.eulerAngles = new Vector3(0, -90f, 0);
+                } else if (transform.position.x < nextPoint.x) {
+                    transform.eulerAngles = new Vector3(0, 90f, 0);
+                }
+            }
 
             //////////////This block deals with jumping over a single low tile in the path 
             // check if this tile is the flag tile to jump over, if so make endpoint next tile in path

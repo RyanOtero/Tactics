@@ -16,10 +16,13 @@ public class InputManager : MonoBehaviour {
     private static float timer;
     public static float delayTime;
     public static float repeatTime;
+    public static float cameraTimerMax;
     private static Func<float, bool>[] directions;
     private static float[] elevations;
     private static float[] zooms;
+    public static Vector3 lastCameraPosition;
     public static bool WasInputLocked { get; private set; }
+    public static bool camInUse;
     private static int camZoomCounter;
     private static InputType inputType;
     public static float deadZone;
@@ -43,11 +46,12 @@ public class InputManager : MonoBehaviour {
         deadZone = .3f;
         isPaused = false;
         isPanelUp = false;
-
+        camInUse = false;
         directions = new Func<float, bool>[] { GoingNorth, GoingEast, GoingSouth, GoingWest };
         elevations = new float[] { 45f, 15f, 25f, 35f };
         zooms = new float[] { -30f, -20f, -40f };
         inputType = InputType.None;
+        cameraTimerMax = 1f / 3f;
     }
 
     void Update() {
@@ -110,11 +114,12 @@ public class InputManager : MonoBehaviour {
                 CanvasManager.Instance.SetActiveCanvas("none");
             } else if (Phase == PhaseOfTurn.Move && !isPaused) {
                 SetLastLocation();
+                PathNavigationController.startRotation = selectedUnit.transform.eulerAngles;
                 availableMoves = GetMoveRange(selectedUnit);
                 PaintRange(availableMoves, "Prefab/Painters/MovePainter");
                 CanvasManager.Instance.SetActiveCanvas("none");
                 TogglePanelUp();
-            } 
+            }
 
             //Cancel out of menu
             else if (Phase == PhaseOfTurn.SelectAction && Input.GetButtonDown("Cancel") && !Input.GetKey(KeyCode.LeftShift) && !isPaused
@@ -134,7 +139,7 @@ public class InputManager : MonoBehaviour {
         } else {
 
             //Show/Hide Items
-            if (Phase == PhaseOfTurn.Confirm && PreviousPhase == PhaseOfTurn.Move){// && selectedUnit.GetComponent<PathNavigationController>().isMoving == false) {
+            if (Phase == PhaseOfTurn.Confirm && PreviousPhase == PhaseOfTurn.Move) {// && selectedUnit.GetComponent<PathNavigationController>().isMoving == false) {
                 ItemManager.ItemOnWalkOver();
             }
 
@@ -197,6 +202,7 @@ public class InputManager : MonoBehaviour {
                 if (Phase == PhaseOfTurn.Confirm) {
                     if (PreviousPhase == PhaseOfTurn.Move) {
                         selectedUnit.GetComponent<PathNavigationController>().Reset();
+                        selectedUnit.transform.eulerAngles = PathNavigationController.startRotation;
                         selectedUnit.transform.position = lastLocation;
                         ItemManager.ItemOnWalkOver();
 
@@ -291,81 +297,103 @@ public class InputManager : MonoBehaviour {
 
         }
 
+
         #region Camera Movement
-        //handle clockwise cam movements if timer is not counting
-        if (Input.GetButtonDown("CamClock") || Input.GetAxis("CamRotate") > 0f
-            && timer == 0f && inputType == InputType.None || timer > 0f && timer < 1f
-            && inputType == InputType.CamClock) {
-            if (timer == 0f) startRotation = cameraParentTrans.rotation;
+        //handle clockwise cam movements
+        if ((!camInUse && (Input.GetButton("CamClock") || Input.GetAxis("CamRotate") > 0f)
+            && !Input.GetButton("CamCounterclock") && timer == 0f && inputType == InputType.None)
+            || camInUse && timer > 0f && inputType == InputType.CamClock) {
+            if (timer == 0f) {
+                startRotation = cameraParentTrans.rotation;
+                inputType = InputType.CamClock;
+            }
             timer += Time.deltaTime;
-            if (timer > 1f / 3f) timer = 1f / 3f;
+            if (timer > cameraTimerMax) timer = cameraTimerMax;
             cameraParentTrans.rotation = Quaternion.Slerp(startRotation, startRotation * Quaternion.Euler(0f, -45f, 0f), timer * 3f);
-            inputType = InputType.CamClock;
         }
         //stop when timer reaches goal
-        if (timer == 1f / 3f && inputType == InputType.CamClock) {
+        if (timer == cameraTimerMax && inputType == InputType.CamClock) {
             timer = 0f;
             if (Mathf.Round(45 + cameraParentTrans.rotation.eulerAngles.y) % 90 == 0) {
                 camRotationCounter++;
             }
-            inputType = InputType.None;
         }
-        //handle counter-clockwise cam movements if timer is not counting
-        if (Input.GetButtonDown("CamCounterclock") || Input.GetAxis("CamRotate") < 0f
-            && timer == 0f && inputType == InputType.None || timer > 0f && timer < 1f
-            && inputType == InputType.CamCounterclock) {
-            if (timer == 0f) startRotation = cameraParentTrans.rotation;
+        //handle counter-clockwise cam movements
+        if ((!camInUse && (Input.GetButton("CamCounterclock") || Input.GetAxis("CamRotate") < 0f)
+            && !Input.GetButton("CamClock") && timer == 0f && inputType == InputType.None)
+            || camInUse && timer > 0f && inputType == InputType.CamCounterclock) {
+            if (timer == 0f) {
+                startRotation = cameraParentTrans.rotation;
+                inputType = InputType.CamCounterclock;
+            }
             timer += Time.deltaTime;
-            if (timer > 1f / 3f) timer = 1f / 3f;
+            if (timer > cameraTimerMax) timer = cameraTimerMax;
             cameraParentTrans.rotation = Quaternion.Slerp(startRotation, startRotation * Quaternion.Euler(0f, 45f, 0f), timer * 3f);
-            inputType = InputType.CamCounterclock;
         }
         //stop when timer reaches goal
-        if (timer == 1f / 3f && inputType == InputType.CamCounterclock) {
+        if (timer == cameraTimerMax && inputType == InputType.CamCounterclock) {
             timer = 0f;
             if (Mathf.Round(cameraParentTrans.rotation.eulerAngles.y) % 90 == 0) {
                 camRotationCounter--;
             }
-            inputType = InputType.None;
         }
 
+        //tracking camera rotation for directional input
         if (camRotationCounter > 3) camRotationCounter = 0;
         else if (camRotationCounter < 0) camRotationCounter = 3;
 
-        if (Input.GetButtonDown("CamElevation") && inputType == InputType.None || timer > 0f && timer < 1f && inputType == InputType.CamElevation) {
-            if (timer == 0f) startRotation = ePivotTrans.localRotation;
+        //handle camera elevation movements
+        if ((!camInUse && Input.GetButtonDown("CamElevation") && inputType == InputType.None)
+            || camInUse && timer > 0f && inputType == InputType.CamElevation) {
+            if (timer == 0f) {
+                startRotation = ePivotTrans.localRotation;
+                inputType = InputType.CamElevation;
+            }
             timer += Time.deltaTime;
-            if (timer > 1f / 3f) timer = 1f / 3f;
+            if (timer > cameraTimerMax) timer = cameraTimerMax;
             isResettingCamParentOffset = true;
             ePivotTrans.localRotation = Quaternion.Slerp(startRotation, Quaternion.Euler(elevations[camElevationCounter], 45f, 0f), timer * 3f);
-            inputType = InputType.CamElevation;
         }
-        if (timer == 1f / 3f && inputType == InputType.CamElevation) {
+
+        //stop when timer reaches goal
+        if (timer == cameraTimerMax && inputType == InputType.CamElevation) {
             timer = 0f;
             camElevationCounter++;
-            inputType = InputType.None;
         }
         if (camElevationCounter > 3) camElevationCounter = 0;
 
-        if (Input.GetButtonDown("CamZoom") && inputType == InputType.None || timer > 0f && timer < 1f && inputType == InputType.CamZoom) {
-            if (timer == 0f) startZoom = camTrans.localPosition;
+        //handle camera zoom movements
+        if ((!camInUse && Input.GetButtonDown("CamZoom") && inputType == InputType.None)
+            || camInUse && timer > 0f && inputType == InputType.CamZoom) {
+            if (timer == 0f) {
+                startZoom = camTrans.localPosition;
+                inputType = InputType.CamZoom;
+            }
             timer += Time.deltaTime;
-            if (timer > 1f / 3f) timer = 1f / 3f;
+            if (timer > cameraTimerMax) timer = cameraTimerMax;
             isResettingCamParentOffset = true;
             camTrans.localPosition = Vector3.Lerp(startZoom, new Vector3(0f, 0f, zooms[camZoomCounter]), timer * 3f);
-            inputType = InputType.CamZoom;
         }
-        if (timer == 1f / 3f && inputType == InputType.CamZoom) {
+
+        //stop when timer reaches goal
+        if (timer == cameraTimerMax && inputType == InputType.CamZoom) {
             timer = 0f;
             if (camZoomCounter == 0) SetThresholds(.4f, .6f);
             if (camZoomCounter == 1) SetThresholds(.45f, .55f);
             if (camZoomCounter == 2) SetThresholds(.35f, .65f);
             camZoomCounter++;
-            //Debug.Log(camZoomCounter);
-            //Debug.Log(lowerThreshold + ", " + upperThreshold);
+        }
+
+        if (camZoomCounter > 2) camZoomCounter = 0;
+
+
+        if (Camera.main.transform.position != lastCameraPosition) {
+            camInUse = true;
+            lastCameraPosition = Camera.main.transform.position;
+        } else {
+            camInUse = false;
             inputType = InputType.None;
         }
-        if (camZoomCounter > 2) camZoomCounter = 0;
 
         #endregion
     }
@@ -439,7 +467,7 @@ public class InputManager : MonoBehaviour {
 
     #endregion
 
-    #region Directional Methods
+    #region Input Methods
     public static bool GoingWest(float deadZone) {
         return Input.GetKey(KeyCode.LeftArrow) || Input.GetAxis("Horizontal") < -deadZone;
     }
@@ -462,6 +490,7 @@ public class InputManager : MonoBehaviour {
         }
         return true;
     }
+
     #endregion
 }
 

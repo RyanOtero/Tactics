@@ -21,6 +21,8 @@ public sealed class BattleManager : MonoBehaviour {
     //Terrain, list of all units and list of units that have not moved this round
     public static List<GameObject> unitList;
     public static List<GameObject> activeUnitList;
+    public List<GameObject> aul;
+
 
     private static int round;
     public static GameObject terrain;
@@ -32,10 +34,6 @@ public sealed class BattleManager : MonoBehaviour {
     public static List<Tile> availableTargets;
 
     public static List<Tile> targetArea;
-    private static GameObject movePainter;
-    private static GameObject rangePainter;
-
-
     public static GameObject selectedUnit;
     public static GameObject targetUnit;
     public static Tile selectedTile;
@@ -73,6 +71,7 @@ public sealed class BattleManager : MonoBehaviour {
         //Initialization
         unitList = new List<GameObject>();
         activeUnitList = new List<GameObject>();
+        aul = activeUnitList;
         foreach (GameObject unit in GameObject.FindGameObjectsWithTag("EnemyUnit")) {
             unitList.Add(unit);
             activeUnitList.Add(unit);

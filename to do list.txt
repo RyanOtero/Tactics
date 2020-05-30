@@ -1,0 +1,6 @@
+to do list
+
+implement grid buttons for inventory
+implement grey out for buttons instead of disabling button
+add unit stats menu
+add rotation to unit moves

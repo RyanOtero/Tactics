@@ -8,7 +8,7 @@ public class ItemDisplay : MonoBehaviour {
 
     void Start() {
         Renderer renderer = gameObject.GetComponentInChildren<Renderer>();
-        Material mat = new Material(Shader.Find("Standard"));
+        Material mat = new Material(Shader.Find("UI/Unlit/Detail"));
         mat.SetFloat("_Mode", 1);
         mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
         mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);

@@ -47,9 +47,9 @@ public class Unit : MonoBehaviour {
     public int jump;
     public int attack;
     public int defense;
-    private bool hasMoved;
-    private bool hasActed;
-    private bool activeUnit;
+    public bool hasMoved;
+    public bool hasActed;
+    public bool activeUnit;
     public UnitData unitData;
     public bool isPlayer;
     public TargetStyle targetStyle;
