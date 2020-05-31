@@ -6,6 +6,7 @@ using Random = UnityEngine.Random;
 using static TacticsUtil;
 using TMPro;
 using UnityEngine.Events;
+using System.Linq;
 
 //todo: player direction during movement, Character Builder, context menu, unit classes, AI
 
@@ -19,12 +20,10 @@ public sealed class BattleManager : MonoBehaviour {
     public static int checkpoint;
 
     //Terrain, list of all units and list of units that have not moved this round
-    public static List<GameObject> unitList;
-    public static List<GameObject> activeUnitList;
-    public List<GameObject> aul;
-
-
-    private static int round;
+    public static List<Unit> unitList;
+    public static List<Unit> activeUnitList;
+    public List<Unit> auq;
+    public List<int> speeds;
     public static GameObject terrain;
     public static float jumpScale;
 
@@ -34,15 +33,14 @@ public sealed class BattleManager : MonoBehaviour {
     public static List<Tile> availableTargets;
 
     public static List<Tile> targetArea;
-    public static GameObject selectedUnit;
-    public static GameObject targetUnit;
+    public static Unit selectedUnit;
+    public static Unit targetUnit;
     public static Tile selectedTile;
     public static Tile targetTile;
     //original location of unit at beginning of movement
     public static Vector3 lastLocation;
     public static GameObject cursor;
     private static PhaseOfTurn phase;
-    public static bool isPlayerTurn;
     //for testing orders
     private static float heightThreshold;
     public TextMeshProUGUI phaseLabel;
@@ -69,84 +67,97 @@ public sealed class BattleManager : MonoBehaviour {
             Instance = this;
         }
         //Initialization
-        unitList = new List<GameObject>();
-        activeUnitList = new List<GameObject>();
-        aul = activeUnitList;
-        foreach (GameObject unit in GameObject.FindGameObjectsWithTag("EnemyUnit")) {
-            unitList.Add(unit);
-            activeUnitList.Add(unit);
-        }
-        foreach (GameObject unit in GameObject.FindGameObjectsWithTag("PlayerUnit")) {
-            unitList.Add(unit);
-            activeUnitList.Add(unit);
-        }
-
+        unitList = new List<Unit>(FindObjectsOfType<Unit>());
+        activeUnitList = new List<Unit>();
         terrain = GameObject.FindGameObjectWithTag("Terrain");
         availableMoves = new List<Tile>();
         availableTargets = new List<Tile>();
         terrainTiles = new List<Tile>();
         ///////Have to make system to order units, probably by speed but will have to incorporate double turns
-        unitList.Reverse();
-        activeUnitList.Reverse();
+        unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
+        activeUnitList = unitList;
+        auq = activeUnitList;
+        speeds = new List<int>();
+        foreach (Unit unit in auq) {
+            speeds.Add(unit.speed);
+        }
         selectedUnit = null;
         targetUnit = null;
         selectedTile = null;
         targetTile = null;
         terrainTiles = GetTerrainTiles();
-        round = 1;
-        isPlayerTurn = true;
         Phase = PhaseOfTurn.SelectUnit;
         PreviousPhase = PhaseOfTurn.None;
         jumpScale = 4f;
         heightThreshold = .26f;
         if (saveData != null) LoadGame(saveData.Slot);
-        cursor = Instantiate(Resources.Load("Prefab/Cursor", typeof(GameObject)), new Vector3(GetX(activeUnitList[0]),
-            GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0])), Quaternion.Euler(0, 0, 0)) as GameObject;
+        cursor = Instantiate(Resources.Load("Prefab/Cursor", typeof(GameObject)), new Vector3(GetX(activeUnitList[0].gameObject),
+            GetY(activeUnitList[0].gameObject) + 1f, GetZ(activeUnitList[0].gameObject)), Quaternion.Euler(0, 0, 0)) as GameObject;
     }
 
-    void Update() {
-        //remove inactive units  
-        foreach (GameObject unit in unitList) {
-            if (unit != null && unit.GetComponent<Unit>().ActiveUnit == false) {
-                activeUnitList.Remove(unit);
-            }
-        }
-
-        //if every unit has moved, increment the round number and replenish active unit list
+    public static void GetTurns(int count = 1) {
         if (activeUnitList.Count == 0) {
-            Endround();
+            List<Unit> inactiveUnitList = new List<Unit>();
+            do {
+                inactiveUnitList.Clear();
+                foreach (Unit unit in unitList) {
+                    unit.IncrementSpeed();
+                    if (!activeUnitList.Contains(unit)) inactiveUnitList.Add(unit);
+                }
+                inactiveUnitList = inactiveUnitList.OrderByDescending(x => x.SpeedCounter).ThenByDescending(x => x.isPlayer).ToList();
+                    foreach (Unit unit in inactiveUnitList) {
+                        if (unit.ActiveUnit) activeUnitList.Add(unit);
+                    }
+            } while (activeUnitList.Count < count);
         }
     }
 
     #region TurnManagement
 
-    public static GameObject SelectUnit() {
-        GameObject unit = null;
+    public static void ShowTargetInfo() {
+        Unit unit = null;
         //if cursor is over unit
-        if (isPlayerTurn == true) {
-            foreach (GameObject pUnit in GameObject.FindGameObjectsWithTag("PlayerUnit")) {
-                if (GetX(cursor) == GetX(pUnit) && GetZ(cursor) == GetZ(pUnit) && pUnit.GetComponent<Unit>().ActiveUnit == true) {
-                    unit = pUnit;
-                }
-            }
-        } else {
-            foreach (GameObject eUnit in GameObject.FindGameObjectsWithTag("EnemyUnit")) {
-                if (GetX(cursor) == GetX(eUnit) && GetZ(cursor) == GetZ(eUnit) && eUnit.GetComponent<Unit>().ActiveUnit == true) {
-                    unit = eUnit;
-                }
+        foreach (Unit u in unitList) {
+            if (Phase == PhaseOfTurn.Attack) {
+                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && u.isPlayer && u.tag == "EnemyUnit"
+                    || GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && !u.isPlayer && u.tag == "PlayerUnit") unit = u;
+            } else {
+                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject)) unit = u;
             }
         }
-
-        return unit;
+        if (unit != null) {
+            CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().unit = unit;
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(CanvasManager.Instance.targetInfoPanel, null, false));
+        } else {
+            CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
+        }
     }
 
-    private static void Endround() {
-        //replenish active unit list and increment round number
-        foreach (GameObject unit in unitList) {
-            unit.GetComponent<Unit>().ActiveUnit = true;
-            activeUnitList.Add(unit);
+    public static void ShowUnitInfo() {
+        Unit unit = null;
+        //if cursor is over unit
+        foreach (Unit u in unitList) {
+            if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject)) unit = u;
         }
-        round++;
+        if (unit != null) {
+            CanvasManager.Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().unit = unit;
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(CanvasManager.Instance.unitInfoPanel, null, false));
+        } else {
+            CanvasManager.Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.unitInfoPanel, false));
+        }
+    }
+
+    public static Unit SelectUnit() {
+        Unit unit = null;
+        //if cursor is over unit
+        foreach (Unit u in unitList) {
+            if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && u.GetComponent<Unit>().ActiveUnit == true) {
+                if (activeUnitList[0] == u) unit = u;
+            }
+        }
+        return unit;
     }
     #endregion
 
@@ -230,20 +241,11 @@ public sealed class BattleManager : MonoBehaviour {
                 break;
         }
     }
-
-    public void SetSelectedUnitInactive() {
-        selectedUnit.GetComponent<Unit>().ActiveUnit = false;
-    }
-
-    
-
-
-
     #endregion
 
     #region Movement
 
-    public static List<Tile> GetMoveRange(GameObject unit) {
+    public static List<Tile> GetMoveRange(Unit unit) {
         //get variables
         Transform trans = unit.transform;
         int movement = unit.GetComponent<Unit>().movement;
@@ -274,7 +276,7 @@ public sealed class BattleManager : MonoBehaviour {
         //remove ally tiles from range after path calculation
         moves.Sort(new InitialDistanceComparer());
 
-        if (isPlayerTurn) {
+        if (selectedUnit.isPlayer) {
             RemoveOccupiedTiles(moves, unit, false, true);
             GetPaths(moves, unit);
             RemoveOccupiedTiles(moves, unit, true, false);
@@ -287,7 +289,7 @@ public sealed class BattleManager : MonoBehaviour {
         return moves;
     }
 
-    private static void GetPaths(List<Tile> list, GameObject unit) {
+    private static void GetPaths(List<Tile> list, Unit unit) {
         GetAdjacency(list, unit);
 
         //trace 4 times to get optimal paths
@@ -308,7 +310,7 @@ public sealed class BattleManager : MonoBehaviour {
 
     }
 
-    private static bool OverHeight(Tile tile, GameObject unit) {
+    private static bool OverHeight(Tile tile, Unit unit) {
         tile.additionalCost = 0;
         //set tile range to movement range of unit
         float height = 0f;
@@ -341,7 +343,7 @@ public sealed class BattleManager : MonoBehaviour {
         }
     }
 
-    private static void TracePaths(List<Tile> list, GameObject unit) {
+    private static void TracePaths(List<Tile> list, Unit unit) {
         foreach (Tile current in list) {
             //if current tile is unit coordinate, generate path for it and each adjacent tile
             if (current == list[0]) {
@@ -374,7 +376,7 @@ public sealed class BattleManager : MonoBehaviour {
         }
     }
 
-    private static void RemoveOccupiedTiles(List<Tile> tileList, GameObject unit, bool removePlayer, bool removeEnemy) {
+    private static void RemoveOccupiedTiles(List<Tile> tileList, Unit unit, bool removePlayer, bool removeEnemy) {
         //shoot a ray from above all tiles, if it hits a player/enemy, remove the tile from the list
         if (removePlayer) {
             tileList.RemoveAll(tile => {
@@ -405,7 +407,7 @@ public sealed class BattleManager : MonoBehaviour {
     }
 
 
-    private static void GetAdjacency(List<Tile> list, GameObject unit) {
+    private static void GetAdjacency(List<Tile> list, Unit unit) {
         for (int a = 0; a < list.Count; a++) {
             Tile tile = list[a];
             //add tile to the East if it exists and is within height range
@@ -436,7 +438,7 @@ public sealed class BattleManager : MonoBehaviour {
 
     #region Targeting
 
-    public static List<Tile> GetTargetRange(GameObject unit, bool removePlayer, bool removeEnemy) {
+    public static List<Tile> GetTargetRange(Unit unit, bool removePlayer, bool removeEnemy) {
         //get variables
         Transform trans = unit.transform;
         int tRange = unit.GetComponent<Unit>().targetRange;
@@ -473,21 +475,13 @@ public sealed class BattleManager : MonoBehaviour {
 
         });
 
-        //foreach (Tile t in targetRange) {
-        //    //set tile variables 
-        //    t.initialDistance = CalcCost(unitLocation, t);
-        //    t.xOffset = CalcXOffset(unitLocation, t);
-        //    t.yOffset = CalcYOffset(unitLocation, t);
-
-        //}
-
         //sort list so tiles closest to unit are first
         //remove enemy tiles from range
         //calculate paths to tiles in list
         //remove ally tiles from range after path calculation
         targetRange.Sort(new InitialDistanceComparer());
 
-        if (isPlayerTurn) {
+        if (selectedUnit.isPlayer) {
             RemoveOccupiedTiles(targetRange, unit, removePlayer, removeEnemy);
         } else {
             RemoveOccupiedTiles(targetRange, unit, removeEnemy, removePlayer);
@@ -495,7 +489,7 @@ public sealed class BattleManager : MonoBehaviour {
         return targetRange;
     }
 
-    public static GameObject TargetOnTile(Tile targetTile, List<GameObject> unitList) {
+    public static Unit TargetOnTile(Tile targetTile, List<Unit> unitList) {
         return unitList.Find(u => {
             Tile t = new Tile(u.transform.position.x, u.transform.position.z);
             if (t == targetTile) return true;
@@ -562,19 +556,20 @@ public sealed class BattleManager : MonoBehaviour {
         unitList.Clear();
         activeUnitList.Clear();
         saveData.UnitDataList.ForEach(u => {
-            GameObject unit;
+            GameObject unitGameObject;
             if (u.IsPlayer) {
-                unit = Instantiate(Resources.Load("Prefab/PlayerUnit", typeof(GameObject)), new Vector3(u.PosRot[0, 0], u.PosRot[0, 1], u.PosRot[0, 2]),
+                unitGameObject = Instantiate(Resources.Load("Prefab/PlayerUnit", typeof(GameObject)), new Vector3(u.PosRot[0, 0], u.PosRot[0, 1], u.PosRot[0, 2]),
                     Quaternion.Euler(u.PosRot[1, 0], u.PosRot[1, 1], u.PosRot[1, 2])) as GameObject;
-                unit.GetComponent<Unit>().LoadUnitData(u);
+                unitGameObject.GetComponent<Unit>().LoadUnitData(u);
             } else {
-                unit = Instantiate(Resources.Load("Prefab/EnemyUnit", typeof(GameObject)), new Vector3(u.PosRot[0, 0], u.PosRot[0, 1], u.PosRot[0, 2]),
+                unitGameObject = Instantiate(Resources.Load("Prefab/EnemyUnit", typeof(GameObject)), new Vector3(u.PosRot[0, 0], u.PosRot[0, 1], u.PosRot[0, 2]),
                     Quaternion.Euler(u.PosRot[1, 0], u.PosRot[1, 1], u.PosRot[1, 2])) as GameObject;
-                unit.GetComponent<Unit>().LoadUnitData(u);
+                unitGameObject.GetComponent<Unit>().LoadUnitData(u);
             }
-            unitList.Add(unit);
+            unitList.Add(unitGameObject.GetComponent<Unit>());
         });
-        activeUnitList = new List<GameObject>(unitList);
+        unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
+        activeUnitList = unitList;
 
     }
 

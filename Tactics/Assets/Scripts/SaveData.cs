@@ -22,7 +22,7 @@ public class SaveData {
         Inventory = new DictStringInt();
     }
 
-    public void RecordUnitData(List<GameObject> units) {
+    public void RecordUnitData(List<Unit> units) {
         units.ForEach(u => {
             u.GetComponent<Unit>().SaveUnitData();
             UnitDataList.Add(u.GetComponent<Unit>().unitData);

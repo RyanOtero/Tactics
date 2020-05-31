@@ -38,13 +38,27 @@ public static class TacticsUtil {
         return x;
     }
 
+    public static float GetX(MonoBehaviour mb) {
+        float x = mb.gameObject.transform.position.x;
+        return x;
+    }
+
     public static float GetY(GameObject go) {
         float y = go.transform.position.y;
         return y;
     }
 
+    public static float GetY(MonoBehaviour mb) {
+        float y = mb.gameObject.transform.position.y;
+        return y;
+    }
+
     public static float GetZ(GameObject go) {
         float z = go.transform.position.z;
+        return z;
+    }
+    public static float GetZ(MonoBehaviour mb) {
+        float z = mb.gameObject.transform.position.z;
         return z;
     }
 }

@@ -1,6 +1,11 @@
 to do list
 
+add spells menu
+add unit expanded info/equipment menu
 implement grid buttons for inventory
 implement grey out for buttons instead of disabling button
-add unit stats menu
-add rotation to unit moves
+fade not working on canvases, probably being destroyed before fade ends
+
+
+done
+

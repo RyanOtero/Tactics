@@ -21,7 +21,7 @@ public class PrayerEffectList : ScriptableObject {
 
 
     public void Heal() {
-        if (target.unitClass == UnitClass.Undead) {
+        if (target.uClass == UnitClass.Undead) {
             target.HP -= 30;
         } else {
             target.HP += 30;
@@ -29,7 +29,7 @@ public class PrayerEffectList : ScriptableObject {
     }
     
     public void Raise() {
-        if (target.unitClass == UnitClass.Undead) {
+        if (target.uClass == UnitClass.Undead) {
             target.HP -= 999;
         } else {
             if (target.statusList.Contains(UnitStatus.Fallen)) {

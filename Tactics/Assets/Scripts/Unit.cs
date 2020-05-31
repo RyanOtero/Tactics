@@ -1,19 +1,21 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Unit : MonoBehaviour {
 
-    public UnitClass unitClass;
+    public UnitType uType;
+    public UnitClass uClass;
     public List<UnitStatus> statusList;
     public int level;
     public int experience;
-
+    public string unitName;
     public int maxHp;
     public int maxMp;
     public int HP {
         get {
-            return hp; 
+            return hp;
         }
         set {
             if (value > maxHp) {
@@ -45,6 +47,10 @@ public class Unit : MonoBehaviour {
     private int mp;
     public int movement;
     public int jump;
+    public int speed;
+    [SerializeField]
+    private int speedCounter;
+    public int destroyCounter;
     public int attack;
     public int defense;
     public bool hasMoved;
@@ -59,6 +65,18 @@ public class Unit : MonoBehaviour {
     [SerializeField]
     public List<PrayerData> prayers;
 
+    public int SpeedCounter {
+        get {
+            return speedCounter;
+        }
+        set {
+            speedCounter = value;
+            if (speedCounter >= 100) {
+                speedCounter -= 100;
+                ActiveUnit = true;
+            }
+        }
+    }
     public bool HasMoved {
         get { return hasMoved; }
         set {
@@ -68,7 +86,6 @@ public class Unit : MonoBehaviour {
             }
         }
     }
-
     public bool HasActed {
         get { return hasActed; }
         set {
@@ -94,19 +111,35 @@ public class Unit : MonoBehaviour {
         hp = maxHp;
         mp = maxMp;
         ActiveUnit = true;
+        if (speed == 0) {
+            speed = 1;
+        }
+        SpeedCounter += speed;
     }
 
+    public void IncrementSpeed() {
+        SpeedCounter += speed;
+    }
 
-
+    public void DeadCheck() {
+        if (HP == 0) destroyCounter++;
+        if (destroyCounter > 2) {
+            //Instantiate(Resources.Load<GameObject>("Prefab/Reward"), transform.position, Quaternion.identity);
+            Destroy(gameObject);
+        }
+    }
     public void SaveUnitData() {
-        unitData.UnitClass = unitClass;
+        unitData.UType = uType;
+        unitData.UClass = uClass;
         unitData.StatusList = statusList;
         unitData.Level = level;
         unitData.Experience = experience;
+        unitData.UnitName = unitName;
         unitData.MaxHP = maxHp;
         unitData.MaxMP = maxMp;
         unitData.Movement = movement;
         unitData.Jump = jump;
+        unitData.Speed = speed;
         unitData.Attack = attack;
         unitData.Defense = defense;
         unitData.IsPlayer = isPlayer;
@@ -127,14 +160,17 @@ public class Unit : MonoBehaviour {
     }
 
     public void LoadUnitData(UnitData unitData) {
-        unitClass = unitData.UnitClass;
+        uType = unitData.UType;
+        uClass = unitData.UClass;
         statusList = unitData.StatusList;
         level = unitData.Level;
         experience = unitData.Experience;
+        unitName = unitData.UnitName;
         maxHp = unitData.MaxHP;
         maxMp = unitData.MaxMP;
         movement = unitData.Movement;
         jump = unitData.Jump;
+        speed = unitData.Speed;
         attack = unitData.Attack;
         defense = unitData.Defense;
         isPlayer = unitData.IsPlayer;

@@ -149,6 +149,9 @@ public class InputManager : MonoBehaviour {
                 CanvasManager.ToggleInputLock();
             }
 
+            if (Phase == PhaseOfTurn.SelectUnit) ShowUnitInfo();
+            if (Phase == PhaseOfTurn.Attack || Phase == PhaseOfTurn.Prayer || Phase == PhaseOfTurn.Item) ShowTargetInfo();
+
             //handling submit button when panel is down 
             if (Input.GetButtonDown("Submit")) {
                 //different phases
@@ -410,14 +413,25 @@ public class InputManager : MonoBehaviour {
             CanvasManager.Instance.SetActiveCanvas("action", bttnIndex);
             ChangePhase(PhaseOfTurn.SelectAction);
             TogglePanelUp();
+            CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
         } else {
-            cursorTrans.position = new Vector3(GetX(selectedUnit), GetY(selectedUnit) + 1f, GetZ(selectedUnit));
+            unitList.RemoveAll(x => x == null);
+            foreach (Unit unit in unitList) {
+                unit.DeadCheck();
+            }
+            activeUnitList.Remove(selectedUnit);
+            GetTurns();
             selectedUnit = null;
+            cursorTrans.position = new Vector3(GetX(activeUnitList[0]), GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0]));
             selectedTile = null;
             CanvasManager.Instance.SetActiveCanvas("none");
             if (Phase == PhaseOfTurn.SelectAction) TogglePanelUp();
             ChangePhase(PhaseOfTurn.SelectUnit);
-            isPlayerTurn = !isPlayerTurn;
+            CanvasManager.Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.unitInfoPanel, false));
+            CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
         }
     }
 
