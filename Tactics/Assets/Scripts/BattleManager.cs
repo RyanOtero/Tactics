@@ -34,6 +34,7 @@ public sealed class BattleManager : MonoBehaviour {
 
     public static List<Tile> targetArea;
     public static Unit selectedUnit;
+    public Unit sUnit;
     public static Unit targetUnit;
     public static Tile selectedTile;
     public static Tile targetTile;
@@ -75,7 +76,7 @@ public sealed class BattleManager : MonoBehaviour {
         terrainTiles = new List<Tile>();
         ///////Have to make system to order units, probably by speed but will have to incorporate double turns
         unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
-        activeUnitList = unitList;
+        activeUnitList = unitList.ToList();
         auq = activeUnitList;
         speeds = new List<int>();
         foreach (Unit unit in auq) {
@@ -500,8 +501,8 @@ public sealed class BattleManager : MonoBehaviour {
     #endregion
 
     #region Actions
-    public static UnityEvent UsePrayer;
-    public static UnityEvent UseItem;
+    public static UnityEvent UsePrayer = new UnityEvent();
+    public static UnityEvent UseItem = new UnityEvent();
     public static void Attack() {
         Unit sUnit = selectedUnit.GetComponent<Unit>();
         Unit tUnit = targetUnit.GetComponent<Unit>();
@@ -569,7 +570,7 @@ public sealed class BattleManager : MonoBehaviour {
             unitList.Add(unitGameObject.GetComponent<Unit>());
         });
         unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
-        activeUnitList = unitList;
+        activeUnitList = unitList.ToList();
 
     }
 

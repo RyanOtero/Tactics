@@ -14,10 +14,11 @@ public class CanvasManager : MonoBehaviour {
     public static CanvasManager Instance { get; private set; } = null;
     public static bool IsInputLocked { get; private set; }
     public static List<Resolution> resolutions;
-    public float fadeSpeed = .75f;
+    public float fadeSpeed;
     private static bool isHeld;
 
     public int CurrentCanvasMaxButtonIndex { get; private set; }
+    public int CurrentCanvasMaxButtonColumnIndex { get; private set; }
     //[HideInInspector]
     public GameObject activeCanvas;
     //[HideInInspector]
@@ -40,12 +41,13 @@ public class CanvasManager : MonoBehaviour {
     public Slider fx;
     public int buttonIndex;
     public int previousButtonIndex;
+    public int buttonColumnIndex;
     public GameObject unitInfoPanel;
     public GameObject targetInfoPanel;
 
     private int currentResIndex;
     private List<SaveData> saveList;
-
+    private GameObject canvasToDestroy;
 
     void Awake() {
         if (Instance != null && Instance != this) {
@@ -66,6 +68,14 @@ public class CanvasManager : MonoBehaviour {
         CurrentCanvasMaxButtonIndex = 3;
         saveList = null;
         if (SceneManager.GetActiveScene().name == "MainMenu") activeCanvas = GetCanvas("main");
+    }
+
+    void Update() {
+        if (canvasToDestroy != null) {
+            if (canvasToDestroy.GetComponent<CanvasGroup>().alpha == 0) {
+            Destroy(canvasToDestroy);
+            }
+        }
     }
 
     public void ChangeScreen(string canvasToChangeTo) {
@@ -111,7 +121,7 @@ public class CanvasManager : MonoBehaviour {
 
     public IEnumerator ChangeScreenCoroutine(string canvasType) {
         transition.GetComponent<Animator>().SetTrigger("FadeOut");
-        yield return new WaitForSecondsRealtime(1f);
+        yield return new WaitForSecondsRealtime(.5f);
         SetActiveCanvasInstantly(canvasType);
         transition.GetComponent<Animator>().SetTrigger("FadeIn");
     }
@@ -120,9 +130,11 @@ public class CanvasManager : MonoBehaviour {
         CurrentCanvasMaxButtonIndex = maxIndex;
     }
 
-    public void UpdatePreviousCanvas() {
+    public void SavePreviousCanvasName() {
         if (activeCanvas != null) {
             previousCanvas = activeCanvas.name.ToLower().Replace("menucanvas(clone)", "");
+        } else {
+            previousCanvas = "none";
         }
     }
 
@@ -133,9 +145,9 @@ public class CanvasManager : MonoBehaviour {
             canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
             StartCoroutine(FadeUIElement(canvasToSwitchTo, activeCanvas));
             previousButtonIndex = buttonIndex;
+            canvasToDestroy = activeCanvas;
             buttonIndex = bttnIndex;
-            UpdatePreviousCanvas();
-            Destroy(activeCanvas);
+            SavePreviousCanvasName();
             activeCanvas = canvasToSwitchTo;
         }
     }
@@ -143,12 +155,13 @@ public class CanvasManager : MonoBehaviour {
     //Only used with black transition
     public void SetActiveCanvasInstantly(string canvasTypeToSwitchTo) {
         previousButtonIndex = buttonIndex;
-        previousCanvas = activeCanvas.name.ToLower().Replace("menucanvas(clone)", "");
+        SavePreviousCanvasName();
         buttonIndex = 0;
         GameObject canvasToSwitchTo = null;
         InputManager.CleanButtonList();
         canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
-        Destroy(activeCanvas);
+        StartCoroutine(FadeUIElement(canvasToSwitchTo, activeCanvas));
+        canvasToDestroy = activeCanvas;
         activeCanvas = canvasToSwitchTo;
         CanvasGroup cg = activeCanvas.GetComponent<CanvasGroup>();
         if (cg != null) cg.alpha = 1;
@@ -208,39 +221,46 @@ public class CanvasManager : MonoBehaviour {
                 canvas = Instantiate(Resources.Load("Prefab/UI/MainMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 CurrentCanvasMaxButtonIndex = 3;
+                CurrentCanvasMaxButtonColumnIndex = 0;
                 break;
             case "options":
                 canvas = Instantiate(Resources.Load("Prefab/UI/OptionsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 SetupOptionsMenu(canvas);
                 CurrentCanvasMaxButtonIndex = 5;
+                CurrentCanvasMaxButtonColumnIndex = 0; 
                 break;
             case "load":
                 canvas = Instantiate(Resources.Load("Prefab/UI/LoadMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 PopulateLoadMenu();
+                CurrentCanvasMaxButtonColumnIndex = 0; 
                 break;
             case "controls":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ControlsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 CurrentCanvasMaxButtonIndex = 0;
+                CurrentCanvasMaxButtonColumnIndex = 0; 
                 break;
             case "newgame":
                 if (activeCanvas.name.ToLower().Contains("main")) BattleManager.saveData = null;
                 StartCoroutine(FadeAndLoadScene("Battle"));
                 CurrentCanvasMaxButtonIndex = 0;
+                CurrentCanvasMaxButtonColumnIndex = 0;
                 break;
             case "action":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ActionMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 SetupActionMenu(canvas);
                 CurrentCanvasMaxButtonIndex = 4;
+                CurrentCanvasMaxButtonColumnIndex = 0;
                 break;
             case "pause":
                 canvas = Instantiate(Resources.Load("Prefab/UI/PauseMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 CurrentCanvasMaxButtonIndex = 4;
-                UpdatePreviousCanvas();
+                CurrentCanvasMaxButtonColumnIndex = 0; 
+                SavePreviousCanvasName();
                 break;
             case "prayer":
 
@@ -249,6 +269,7 @@ public class CanvasManager : MonoBehaviour {
                 canvas = Instantiate(Resources.Load("Prefab/UI/InventoryMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 PopulateInventoryMenu();
+                CurrentCanvasMaxButtonColumnIndex = 1;
                 break;
             case "store":
 
@@ -274,6 +295,7 @@ public class CanvasManager : MonoBehaviour {
         return canvas;
     }
 
+    #region Options Setup
     public void MusicVolume(float value) {
         musicMixer.SetFloat("MusicVol", value);
     }
@@ -297,6 +319,31 @@ public class CanvasManager : MonoBehaviour {
         resolutionText.SetText(resolutions[index].width + " x " + resolutions[index].height);
 
     }
+
+   public void SetupOptionsMenu(GameObject canvas) {
+        foreach (TextMeshProUGUI tmp in canvas.GetComponentsInChildren<TextMeshProUGUI>()) {
+            if (tmp.name == "Label") resolutionText = tmp;
+        }
+        fullScreenToggle = canvas.GetComponentInChildren<Toggle>();
+
+        foreach (Slider sld in canvas.GetComponentsInChildren<Slider>()) {
+            if (sld.name == "MusicSlider") music = sld;
+            if (sld.name == "FXSlider") fx = sld;
+        }
+        resolutions = new List<Resolution>();
+        foreach (var t in Screen.resolutions) {
+            if (!resolutions.Exists(res => res.width == t.width
+                                           && res.height == t.height)) resolutions.Add(t);
+        }
+        resolutions.ForEach(res => {
+            if (res.width == Screen.currentResolution.width && res.height == Screen.currentResolution.height) {
+                currentResIndex = resolutions.IndexOf(res);
+            }
+        });
+        SetResolution(currentResIndex);
+        resolutionText.SetText(resolutions[currentResIndex].width + " x " + resolutions[currentResIndex].height);
+    }
+    #endregion
 
     #region Menu Navigation Handling
 
@@ -382,27 +429,19 @@ public class CanvasManager : MonoBehaviour {
     //handling horizontal input in menus
     public void NavHorizontalMenu() {
         if (!IsInputLocked) {
-            if (InputManager.GoingWest(InputManager.deadZone) && !isHeld) {
-                isHeld = true;
-                buttonIndex--;
-                LoopIndex();
-                if (InputManager.Instance != null && activeCanvas != null && activeCanvas.name.ToLower().Contains("action")) {
-                    for (int i = InputManager.contextButtonList.Count - 1; i > -1; i--) {
-                        if (InputManager.contextButtonList[i].index == buttonIndex
-                            && InputManager.contextButtonList[i].IsEnabled == false) buttonIndex--;
-                    }
+            if (!InputManager.isPaused) {
+                if (InputManager.GoingWest(InputManager.deadZone) && !isHeld) {
+                    isHeld = true;
+                    buttonColumnIndex--;
+                    LoopColumnIndex();
+                } else if (InputManager.GoingEast(InputManager.deadZone) && !isHeld) {
+                    isHeld = true;
+                    buttonColumnIndex++;
+                    LoopColumnIndex();
+                } else if (InputManager.DirectionsReleased(InputManager.deadZone)) {
+                    isHeld = false;
                 }
-                LoopIndex();
-            } else if (InputManager.GoingEast(InputManager.deadZone) && !isHeld) {
-                isHeld = true;
-                buttonIndex++;
-                LoopIndex();
-                if (InputManager.Instance != null && activeCanvas != null && activeCanvas.name.ToLower().Contains("action")) {
-                    InputManager.contextButtonList.ForEach(b => { if (b.index == buttonIndex && b.IsEnabled == false) buttonIndex++; });
-                }
-                LoopIndex();
-            } else if (InputManager.DirectionsReleased(InputManager.deadZone)) {
-                isHeld = false;
+
             }
         }
     }
@@ -418,6 +457,13 @@ public class CanvasManager : MonoBehaviour {
         }
     }
 
+    public void LoopColumnIndex() {
+        if (buttonColumnIndex > CurrentCanvasMaxButtonColumnIndex) buttonColumnIndex = 0;
+        else if (buttonColumnIndex < 0) buttonColumnIndex = CurrentCanvasMaxButtonColumnIndex;
+    }
+
+
+
     #endregion
 
     public void SetupActionMenu(GameObject canvas) {
@@ -428,30 +474,6 @@ public class CanvasManager : MonoBehaviour {
             InputManager.contextButtonList.Add(button);
         }
 
-    }
-
-    public void SetupOptionsMenu(GameObject canvas) {
-        foreach (TextMeshProUGUI tmp in canvas.GetComponentsInChildren<TextMeshProUGUI>()) {
-            if (tmp.name == "Label") resolutionText = tmp;
-        }
-        fullScreenToggle = canvas.GetComponentInChildren<Toggle>();
-
-        foreach (Slider sld in canvas.GetComponentsInChildren<Slider>()) {
-            if (sld.name == "MusicSlider") music = sld;
-            if (sld.name == "FXSlider") fx = sld;
-        }
-        resolutions = new List<Resolution>();
-        foreach (var t in Screen.resolutions) {
-            if (!resolutions.Exists(res => res.width == t.width
-                                           && res.height == t.height)) resolutions.Add(t);
-        }
-        resolutions.ForEach(res => {
-            if (res.width == Screen.currentResolution.width && res.height == Screen.currentResolution.height) {
-                currentResIndex = resolutions.IndexOf(res);
-            }
-        });
-        SetResolution(currentResIndex);
-        resolutionText.SetText(resolutions[currentResIndex].width + " x " + resolutions[currentResIndex].height);
     }
 
     public void PopulateLoadMenu() {
@@ -489,7 +511,6 @@ public class CanvasManager : MonoBehaviour {
         for (int i = 0; i < parent.transform.childCount; i++) {
             Destroy(parent.transform.GetChild(i).gameObject);
         }
-        GameObject desc = GameObject.Find("Description");
         int index = 0;
         foreach (KeyValuePair<string, int> item in ItemManager.Instance.inventory) {
             ItemData itemData = ItemManager.Instance.allItems.Find(x => x.itemName == item.Key);
@@ -502,17 +523,28 @@ public class CanvasManager : MonoBehaviour {
             TextMeshProUGUI qty = itemPanel.transform.Find("Qty").GetComponent<TextMeshProUGUI>();
             Image thumbnail = itemPanel.transform.Find("Thumbnail").GetComponent<Image>();
             name.text = item.Key;
+            name.rectTransform.sizeDelta = new Vector2(1100, 120);
             qty.text = item.Value.ToString();
             thumbnail.sprite = ItemManager.Instance.allItems.Find(x => x.itemName == item.Key).sprite;
-            desc.GetComponent<TextMeshProUGUI>().text = itemData.description;
             IndexButton indexButton = name.GetComponent<IndexButton>();
             InputManager.contextButtonList.Add(indexButton);
-            indexButton.index = index;
+            if (index % 2 == 0) {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 0;
+            } else {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 1;
+            }
             index++;
             ConsumableItemData cid = itemData as ConsumableItemData;
             PersistentItemData pid = itemData as PersistentItemData;
+            indexButton.select.AddListener(() => {
+                GameObject desc = GameObject.Find("Description");
+                desc.GetComponent<TextMeshProUGUI>().text = itemData.description;
+            });
             if (cid == null) {
-                indexButton.IsEnabled = false;
+                indexButton.IsDimmed = true;
+                qty.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
             } else {
                 indexButton.confirm.AddListener(() => {
                     BattleManager.UseItem = cid.effect;
@@ -521,7 +553,8 @@ public class CanvasManager : MonoBehaviour {
             }
 
         }
-        SetMaxIndexForCurrentCanvas(ItemManager.Instance.inventory.Count - 1);
+        int maxIndex = ItemManager.Instance.inventory.Count % 2 == 0 ? ItemManager.Instance.inventory.Count / 2 - 1: ItemManager.Instance.inventory.Count / 2;
+        SetMaxIndexForCurrentCanvas(maxIndex);
     }
 
     public void OnConfirmLoadGame() {

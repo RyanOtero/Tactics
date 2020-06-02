@@ -8,24 +8,25 @@ public class IndexButton : MonoBehaviour {
 
     //public static IndexButton lastButton;
     public int index;
+    public int columnIndex;
     private Animator animator;
-    public bool isConfirmable;
     [SerializeField]
     private bool isEnabled;
-    public UnityEvent confirm;
-    private Color faceColor;
-    private Color outlineColor;
+    [SerializeField]
+    private bool isDimmed;
+    [SerializeField]
+    private bool isConfirmable;
+    public UnityEvent confirm = new UnityEvent();
+    public UnityEvent select = new UnityEvent();
 
     public bool IsEnabled {
         get => isEnabled;
         set {
             //if disabled, dim the color
             if (value) {
-                gameObject.GetComponent<TextMeshProUGUI>().faceColor = faceColor;
-                gameObject.GetComponent<TextMeshProUGUI>().outlineColor = outlineColor;
+                gameObject.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF +103");
             } else {
-                gameObject.GetComponent<TextMeshProUGUI>().faceColor = faceColor * new Color(.5f, .5f, .5f, 1f);
-                gameObject.GetComponent<TextMeshProUGUI>().outlineColor = outlineColor * new Color(.5f, .5f, .5f, 1f);
+                gameObject.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
                 if (animator == null) animator = gameObject.GetComponent<Animator>();
                 animator.SetBool("isSelected", false);
             }
@@ -33,19 +34,34 @@ public class IndexButton : MonoBehaviour {
         }
     }
 
-    private void Start() {
-        animator = gameObject.GetComponent<Animator>();
-        faceColor = gameObject.GetComponent<TextMeshProUGUI>().faceColor;
-        outlineColor = gameObject.GetComponent<TextMeshProUGUI>().outlineColor;
+    public bool IsDimmed {
+        get => isDimmed;
+        set {
+            if (value) {
+                gameObject.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
+            } else {
+                gameObject.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF +103");
+            }
+            isDimmed = value;
+        }
     }
+
+    void Awake() {
+    }
+
+    void Start() {
+        animator = gameObject.GetComponent<Animator>();
+    }
+
     void Update() {
         if (animator.GetBool("isConfirmed")) {
             animator.SetBool("isConfirmed", false);
         }
         if (IsEnabled) {
-            if (CanvasManager.Instance.buttonIndex == index) {
+            if (CanvasManager.Instance.buttonIndex == index && CanvasManager.Instance.buttonColumnIndex == columnIndex) {
                 animator.SetBool("isSelected", true);
-                if (Input.GetButtonDown("Submit") && isConfirmable) {
+                select.Invoke();
+                if (Input.GetButtonDown("Submit") && !IsDimmed && isConfirmable && gameObject.GetComponentInParent<CanvasGroup>().alpha == 1) {
                     animator.SetBool("isConfirmed", true);
                     confirm.Invoke();
                 } else if (Input.GetButtonDown("Submit") && !isConfirmable) {

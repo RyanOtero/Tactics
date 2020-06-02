@@ -2,10 +2,9 @@ to do list
 
 add spells menu
 add unit expanded info/equipment menu
-implement grid buttons for inventory
-implement grey out for buttons instead of disabling button
-fade not working on canvases, probably being destroyed before fade ends
-
+scale down unit info panels
+implement grid buttons for inventory (make index continuous from bottom of one column to top on next)
 
 done
-
+fade not working on canvases, probably being destroyed before fade ends
+implement grey out for buttons instead of disabling button

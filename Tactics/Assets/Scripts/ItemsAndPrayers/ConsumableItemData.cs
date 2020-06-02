@@ -9,5 +9,5 @@ using UnityEngine.Events;
 
 [CreateAssetMenu(menuName = "ConsumableItem/Data")]
 public class ConsumableItemData : ItemData {
-    public UnityEvent effect;
+    public UnityEvent effect = new UnityEvent();
 }

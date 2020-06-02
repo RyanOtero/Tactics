@@ -9,6 +9,6 @@ using UnityEngine.Events;
 
 [CreateAssetMenu(menuName = "PersistentItem/Data")]
 public class PersistentItemData : ItemData {
-    public UnityEvent equipEffect;
-    public UnityEvent unequipEffect;
+    public UnityEvent equipEffect = new UnityEvent();
+    public UnityEvent unequipEffect = new UnityEvent();
 }

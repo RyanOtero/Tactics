@@ -79,17 +79,14 @@ public class InputManager : MonoBehaviour {
                     if (!isPanelUp) TogglePanelUp();
                     CanvasManager.Instance.SetActiveCanvas("pause");
                 } else {
-                    if (string.IsNullOrEmpty(CanvasManager.Instance.previousCanvas)) {
+                    if (CanvasManager.Instance.previousCanvas == "none") {
                         TogglePanelUp();
-                        CanvasManager.Instance.SetActiveCanvas("none");
                     }
                     if (WasInputLocked) {
                         CanvasManager.ToggleInputLock();
                         WasInputLocked = false;
-                    } else {
-                        CanvasManager.Instance.SetActiveCanvas(CanvasManager.Instance.previousCanvas.ToLower().Replace("menucanvas(clone)", ""), CanvasManager.Instance.previousButtonIndex);
                     }
-                    CanvasManager.Instance.previousCanvas = "";
+                    CanvasManager.Instance.SetActiveCanvas(CanvasManager.Instance.previousCanvas.ToLower().Replace("menucanvas(clone)", ""), CanvasManager.Instance.previousButtonIndex);
                 }
             }
         }
@@ -97,6 +94,7 @@ public class InputManager : MonoBehaviour {
 
             //look for menu input
             CanvasManager.Instance.NavMenu();
+            CanvasManager.Instance.NavHorizontalMenu();
             CanvasManager.Instance.NavOptions();
 
             //Handle first frame after selecting an item in action menu
@@ -157,6 +155,7 @@ public class InputManager : MonoBehaviour {
                 //different phases
                 if (Phase == PhaseOfTurn.SelectUnit) {
                     selectedUnit = SelectUnit();
+                    BattleManager.Instance.sUnit = BattleManager.selectedUnit;
                     if (selectedUnit != null) {
                         CanvasManager.Instance.SetActiveCanvas("action");
                         ChangePhase(PhaseOfTurn.SelectAction);
