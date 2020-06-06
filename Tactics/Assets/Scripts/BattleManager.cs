@@ -22,6 +22,8 @@ public sealed class BattleManager : MonoBehaviour {
     //Terrain, list of all units and list of units that have not moved this round
     public static List<Unit> unitList;
     public static List<Unit> activeUnitList;
+    public static List<PrayerData> allPrayers;
+    //auq and speeds FOR TESTING
     public List<Unit> auq;
     public List<int> speeds;
     public static GameObject terrain;
@@ -77,6 +79,8 @@ public sealed class BattleManager : MonoBehaviour {
         ///////Have to make system to order units, probably by speed but will have to incorporate double turns
         unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
         activeUnitList = unitList.ToList();
+        allPrayers = new List<PrayerData>(Resources.LoadAll<PrayerData>("ScriptableObjects/Prayers"));
+        //auq and speeds FOR TESTING
         auq = activeUnitList;
         speeds = new List<int>();
         foreach (Unit unit in auq) {
@@ -120,8 +124,8 @@ public sealed class BattleManager : MonoBehaviour {
         //if cursor is over unit
         foreach (Unit u in unitList) {
             if (Phase == PhaseOfTurn.Attack) {
-                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && u.isPlayer && u.tag == "EnemyUnit"
-                    || GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && !u.isPlayer && u.tag == "PlayerUnit") unit = u;
+                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && selectedUnit.isPlayer && !u.isPlayer
+                    || GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && !selectedUnit.isPlayer && u.isPlayer) unit = u;
             } else {
                 if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject)) unit = u;
             }

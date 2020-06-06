@@ -17,8 +17,8 @@ public class CanvasManager : MonoBehaviour {
     public float fadeSpeed;
     private static bool isHeld;
 
-    public int CurrentCanvasMaxButtonIndex { get; private set; }
-    public int CurrentCanvasMaxButtonColumnIndex { get; private set; }
+    public int MaxButtonIndex { get; private set; }
+    public int MaxButtonColumnIndex { get; private set; }
     //[HideInInspector]
     public GameObject activeCanvas;
     //[HideInInspector]
@@ -40,8 +40,8 @@ public class CanvasManager : MonoBehaviour {
     [HideInInspector]
     public Slider fx;
     public int buttonIndex;
-    public int previousButtonIndex;
     public int buttonColumnIndex;
+    public int previousButtonIndex;
     public GameObject unitInfoPanel;
     public GameObject targetInfoPanel;
 
@@ -65,7 +65,7 @@ public class CanvasManager : MonoBehaviour {
 
     void Start() {
         //setup for main menu/pause menu
-        CurrentCanvasMaxButtonIndex = 3;
+        MaxButtonIndex = 3;
         saveList = null;
         if (SceneManager.GetActiveScene().name == "MainMenu") activeCanvas = GetCanvas("main");
     }
@@ -73,7 +73,7 @@ public class CanvasManager : MonoBehaviour {
     void Update() {
         if (canvasToDestroy != null) {
             if (canvasToDestroy.GetComponent<CanvasGroup>().alpha == 0) {
-            Destroy(canvasToDestroy);
+                Destroy(canvasToDestroy);
             }
         }
     }
@@ -127,7 +127,7 @@ public class CanvasManager : MonoBehaviour {
     }
 
     public void SetMaxIndexForCurrentCanvas(int maxIndex) {
-        CurrentCanvasMaxButtonIndex = maxIndex;
+        MaxButtonIndex = maxIndex;
     }
 
     public void SavePreviousCanvasName() {
@@ -220,62 +220,65 @@ public class CanvasManager : MonoBehaviour {
             case "main":
                 canvas = Instantiate(Resources.Load("Prefab/UI/MainMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                CurrentCanvasMaxButtonIndex = 3;
-                CurrentCanvasMaxButtonColumnIndex = 0;
+                MaxButtonIndex = 3;
+                MaxButtonColumnIndex = 0;
                 break;
             case "options":
                 canvas = Instantiate(Resources.Load("Prefab/UI/OptionsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 SetupOptionsMenu(canvas);
-                CurrentCanvasMaxButtonIndex = 5;
-                CurrentCanvasMaxButtonColumnIndex = 0; 
+                MaxButtonIndex = 5;
+                MaxButtonColumnIndex = 0;
                 break;
             case "load":
                 canvas = Instantiate(Resources.Load("Prefab/UI/LoadMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 PopulateLoadMenu();
-                CurrentCanvasMaxButtonColumnIndex = 0; 
+                MaxButtonColumnIndex = 0;
                 break;
             case "controls":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ControlsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                CurrentCanvasMaxButtonIndex = 0;
-                CurrentCanvasMaxButtonColumnIndex = 0; 
+                MaxButtonIndex = 0;
+                MaxButtonColumnIndex = 0;
                 break;
             case "newgame":
                 if (activeCanvas.name.ToLower().Contains("main")) BattleManager.saveData = null;
                 StartCoroutine(FadeAndLoadScene("Battle"));
-                CurrentCanvasMaxButtonIndex = 0;
-                CurrentCanvasMaxButtonColumnIndex = 0;
+                MaxButtonIndex = 0;
+                MaxButtonColumnIndex = 0;
                 break;
             case "action":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ActionMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 SetupActionMenu(canvas);
-                CurrentCanvasMaxButtonIndex = 4;
-                CurrentCanvasMaxButtonColumnIndex = 0;
+                MaxButtonIndex = 4;
+                MaxButtonColumnIndex = 0;
                 break;
             case "pause":
                 canvas = Instantiate(Resources.Load("Prefab/UI/PauseMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                CurrentCanvasMaxButtonIndex = 4;
-                CurrentCanvasMaxButtonColumnIndex = 0; 
+                MaxButtonIndex = 4;
+                MaxButtonColumnIndex = 0;
                 SavePreviousCanvasName();
                 break;
             case "prayer":
-
+                canvas = Instantiate(Resources.Load("Prefab/UI/PrayerMenuCanvas")) as GameObject;
+                canvas.GetComponent<Canvas>().worldCamera = Camera.main;
+                PopulatePrayerMenu();
+                MaxButtonColumnIndex = 1;
                 break;
             case "inventory":
                 canvas = Instantiate(Resources.Load("Prefab/UI/InventoryMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 PopulateInventoryMenu();
-                CurrentCanvasMaxButtonColumnIndex = 1;
+                MaxButtonColumnIndex = 1;
                 break;
             case "store":
 
                 break;
             case "none":
-                CurrentCanvasMaxButtonIndex = 0;
+                MaxButtonIndex = 0;
                 break;
             default:
                 break;
@@ -320,7 +323,7 @@ public class CanvasManager : MonoBehaviour {
 
     }
 
-   public void SetupOptionsMenu(GameObject canvas) {
+    public void SetupOptionsMenu(GameObject canvas) {
         foreach (TextMeshProUGUI tmp in canvas.GetComponentsInChildren<TextMeshProUGUI>()) {
             if (tmp.name == "Label") resolutionText = tmp;
         }
@@ -344,6 +347,146 @@ public class CanvasManager : MonoBehaviour {
         resolutionText.SetText(resolutions[currentResIndex].width + " x " + resolutions[currentResIndex].height);
     }
     #endregion
+
+     public void SetupActionMenu(GameObject canvas) {
+        List<string> actions = new List<string>() { "attack", "item", "prayer" };
+        foreach (IndexButton button in canvas.GetComponentsInChildren<IndexButton>()) {
+            if (actions.Contains(button.gameObject.name.ToLower()) && BattleManager.selectedUnit.GetComponent<Unit>().HasActed) button.IsEnabled = false;
+            if (button.gameObject.name.ToLower() == "move" && BattleManager.selectedUnit.GetComponent<Unit>().HasMoved) button.IsEnabled = false;
+            InputManager.contextButtonList.Add(button);
+        }
+
+    }
+
+    public void PopulateLoadMenu() {
+        GameObject parent = GameObject.Find("Content");
+        saveList = null;
+        //clear existing items
+        for (int i = 0; i < parent.transform.childCount; i++) {
+            Destroy(parent.transform.GetChild(i).gameObject);
+        }
+        saveList = SaveData.GetSaves();
+        for (int i = 0; i < saveList.Count; i++) {
+            GameObject saveDataPanel = Instantiate(Resources.Load("Prefab/UI/SaveDataPanel")) as GameObject;
+            saveDataPanel.transform.SetParent(parent.transform);
+            saveDataPanel.transform.localPosition = Vector3.zero;
+            saveDataPanel.transform.localRotation = Quaternion.identity;
+            saveDataPanel.transform.localScale = Vector3.one;
+            TextMeshProUGUI slot = saveDataPanel.transform.Find("SlotNumber").GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI checkpoint = saveDataPanel.transform.Find("Checkpoint").GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI Time = saveDataPanel.transform.Find("Time").GetComponent<TextMeshProUGUI>();
+            slot.text = saveList[i].Slot.ToString("D3");
+            checkpoint.text = Checkpoints[saveList[i].Checkpoint % 7];
+            Time.text = FormatTime(saveList[i].GameTime);
+            IndexButton indexButton = slot.GetComponent<IndexButton>();
+            indexButton.index = i;
+            indexButton.confirm.AddListener(OnConfirmLoadGame);
+        }
+        SetMaxIndexForCurrentCanvas(saveList.Count);
+        GameObject.Find("LoadMenuCanvas(Clone)").transform.Find("Back").GetComponent<IndexButton>().index = MaxButtonIndex;
+    }
+
+    public void PopulateInventoryMenu() {
+        GameObject parent = GameObject.Find("Content");
+        //clear existing items
+        for (int i = 0; i < parent.transform.childCount; i++) {
+            Destroy(parent.transform.GetChild(i).gameObject);
+        }
+        int index = 0;
+        foreach (KeyValuePair<string, int> item in ItemManager.Instance.inventory) {
+            ItemData itemData = ItemManager.Instance.allItems.Find(x => x.itemName == item.Key);
+            GameObject itemPanel = Instantiate(Resources.Load("Prefab/UI/ItemPanel")) as GameObject;
+            itemPanel.transform.SetParent(parent.transform);
+            itemPanel.transform.localPosition = Vector3.zero;
+            itemPanel.transform.localRotation = Quaternion.identity;
+            itemPanel.transform.localScale = Vector3.one;
+            TextMeshProUGUI name = itemPanel.transform.Find("ItemName").GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI qty = itemPanel.transform.Find("Qty").GetComponent<TextMeshProUGUI>();
+            Image thumbnail = itemPanel.transform.Find("Thumbnail").GetComponent<Image>();
+            name.text = item.Key;
+            name.rectTransform.sizeDelta = new Vector2(1100, 120);
+            qty.text = item.Value.ToString();
+            thumbnail.sprite = itemData.sprite;
+            IndexButton indexButton = name.GetComponent<IndexButton>();
+            InputManager.contextButtonList.Add(indexButton);
+            if (index % 2 == 0) {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 0;
+            } else {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 1;
+            }
+            index++;
+            ConsumableItemData cid = itemData as ConsumableItemData;
+            PersistentItemData pid = itemData as PersistentItemData;
+            indexButton.select.AddListener(() => {
+                GameObject desc = GameObject.Find("Description");
+                desc.GetComponent<TextMeshProUGUI>().text = itemData.description;
+            });
+            if (cid == null) {
+                indexButton.IsDimmed = true;
+                qty.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
+            } else {
+                indexButton.confirm.AddListener(() => {
+                    BattleManager.UseItem = cid.effect;
+                    BattleManager.ChangePhase(PhaseOfTurn.Item);
+                });
+            }
+
+        }
+        int maxIndex = ItemManager.Instance.inventory.Count % 2 == 0 ? ItemManager.Instance.inventory.Count / 2 - 1 : ItemManager.Instance.inventory.Count / 2;
+        SetMaxIndexForCurrentCanvas(maxIndex);
+    }
+
+    public void PopulatePrayerMenu() {
+        GameObject parent = GameObject.Find("Content");
+        //clear existing items
+        for (int i = 0; i < parent.transform.childCount; i++) {
+            Destroy(parent.transform.GetChild(i).gameObject);
+        }
+        int index = 0;
+        foreach (string prayer in BattleManager.selectedUnit.prayers) {
+            PrayerData prayerData = BattleManager.allPrayers.Find(x => x.prayerName == prayer);
+            GameObject prayerPanel = Instantiate(Resources.Load("Prefab/UI/PrayerPanel")) as GameObject;
+            prayerPanel.transform.SetParent(parent.transform);
+            prayerPanel.transform.localPosition = Vector3.zero;
+            prayerPanel.transform.localRotation = Quaternion.identity;
+            prayerPanel.transform.localScale = Vector3.one;
+            TextMeshProUGUI name = prayerPanel.transform.Find("PrayerName").GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI cost = prayerPanel.transform.Find("Cost").GetComponent<TextMeshProUGUI>();
+            Image thumbnail = prayerPanel.transform.Find("Thumbnail").GetComponent<Image>();
+            name.text = prayer;
+            name.rectTransform.sizeDelta = new Vector2(1100, 120);
+            cost.text = prayerData.cost.ToString();
+            thumbnail.sprite = prayerData.sprite;
+            IndexButton indexButton = name.GetComponent<IndexButton>();
+            InputManager.contextButtonList.Add(indexButton);
+            if (index % 2 == 0) {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 0;
+            } else {
+                indexButton.index = index / 2;
+                indexButton.columnIndex = 1;
+            }
+            index++;
+            indexButton.select.AddListener(() => {
+                GameObject desc = GameObject.Find("Description");
+                desc.GetComponent<TextMeshProUGUI>().text = prayerData.description;
+            });
+            if (prayerData.cost > BattleManager.selectedUnit.Faith) {
+                indexButton.IsDimmed = true;
+                cost.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
+            } else {
+                indexButton.confirm.AddListener(() => {
+                    BattleManager.UsePrayer = prayerData.effect;
+                    BattleManager.ChangePhase(PhaseOfTurn.Prayer);
+                });
+            }
+
+        }
+        int maxIndex = BattleManager.selectedUnit.prayers.Count % 2 == 0 ? BattleManager.selectedUnit.prayers.Count / 2 - 1 : BattleManager.selectedUnit.prayers.Count / 2;
+        SetMaxIndexForCurrentCanvas(maxIndex);
+    }
 
     #region Menu Navigation Handling
 
@@ -394,32 +537,44 @@ public class CanvasManager : MonoBehaviour {
 
     //handling vertical input in menus
     public void NavMenu() {
+        int cIndex;
         if (!IsInputLocked) {
+            //skip button if it's disabled
             if (InputManager.contextButtonList.Count > 1) {
                 if (InputManager.contextButtonList[buttonIndex].IsEnabled == false) {
                     buttonIndex++;
-                    LoopIndex();
+                    LoopIndexCheck();
                 }
             }
             if (InputManager.GoingNorth(InputManager.deadZone) && !isHeld) {
                 isHeld = true;
+                if (buttonIndex == 0) {
+                    cIndex = buttonColumnIndex;
+                    buttonColumnIndex--;
+                    LoopColumnIndexCheck();
+                }
                 buttonIndex--;
-                LoopIndex();
+                LoopIndexCheck();
                 if (InputManager.Instance != null && activeCanvas != null && activeCanvas.name.ToLower().Contains("action")) {
                     for (int i = InputManager.contextButtonList.Count - 1; i > -1; i--) {
                         if (InputManager.contextButtonList[i].index == buttonIndex
                             && InputManager.contextButtonList[i].IsEnabled == false) buttonIndex--;
                     }
                 }
-                LoopIndex();
+                LoopIndexCheck();
             } else if (InputManager.GoingSouth(InputManager.deadZone) && !isHeld) {
                 isHeld = true;
+                if (buttonIndex == MaxButtonIndex) {
+                    cIndex = buttonColumnIndex;
+                    buttonColumnIndex++;
+                    LoopColumnIndexCheck();
+                }
                 buttonIndex++;
-                LoopIndex();
+                LoopIndexCheck();
                 if (InputManager.Instance != null && activeCanvas != null && activeCanvas.name.ToLower().Contains("action")) {
                     InputManager.contextButtonList.ForEach(b => { if (b.index == buttonIndex && b.IsEnabled == false) buttonIndex++; });
                 }
-                LoopIndex();
+                LoopIndexCheck();
             } else if (InputManager.DirectionsReleased(InputManager.deadZone)) {
                 isHeld = false;
             }
@@ -428,16 +583,27 @@ public class CanvasManager : MonoBehaviour {
 
     //handling horizontal input in menus
     public void NavHorizontalMenu() {
+        int index;
         if (!IsInputLocked) {
             if (!InputManager.isPaused) {
                 if (InputManager.GoingWest(InputManager.deadZone) && !isHeld) {
                     isHeld = true;
+                    if (buttonColumnIndex == 0) {
+                        index = buttonIndex;
+                        buttonIndex--;
+                        LoopIndexCheck();
+                    }
                     buttonColumnIndex--;
-                    LoopColumnIndex();
+                    LoopColumnIndexCheck();
                 } else if (InputManager.GoingEast(InputManager.deadZone) && !isHeld) {
                     isHeld = true;
+                    if (buttonColumnIndex == MaxButtonColumnIndex) {
+                        index = buttonIndex;
+                        buttonIndex++;
+                        LoopIndexCheck();
+                    }
                     buttonColumnIndex++;
-                    LoopColumnIndex();
+                    LoopColumnIndexCheck();
                 } else if (InputManager.DirectionsReleased(InputManager.deadZone)) {
                     isHeld = false;
                 }
@@ -450,112 +616,19 @@ public class CanvasManager : MonoBehaviour {
         IsInputLocked = !IsInputLocked;
     }
 
-    public void LoopIndex() {
+    public void LoopIndexCheck() {
         if (buttonIndex != -100) {
-            if (buttonIndex > CurrentCanvasMaxButtonIndex) buttonIndex = 0;
-            else if (buttonIndex < 0) buttonIndex = CurrentCanvasMaxButtonIndex;
+            if (buttonIndex > MaxButtonIndex) buttonIndex = 0;
+            else if (buttonIndex < 0) buttonIndex = MaxButtonIndex;
         }
     }
 
-    public void LoopColumnIndex() {
-        if (buttonColumnIndex > CurrentCanvasMaxButtonColumnIndex) buttonColumnIndex = 0;
-        else if (buttonColumnIndex < 0) buttonColumnIndex = CurrentCanvasMaxButtonColumnIndex;
+    public void LoopColumnIndexCheck() {
+        if (buttonColumnIndex > MaxButtonColumnIndex) buttonColumnIndex = 0;
+        else if (buttonColumnIndex < 0) buttonColumnIndex = MaxButtonColumnIndex;
     }
-
-
 
     #endregion
-
-    public void SetupActionMenu(GameObject canvas) {
-        List<string> actions = new List<string>() { "attack", "item", "prayer" };
-        foreach (IndexButton button in canvas.GetComponentsInChildren<IndexButton>()) {
-            if (actions.Contains(button.gameObject.name.ToLower()) && BattleManager.selectedUnit.GetComponent<Unit>().HasActed) button.IsEnabled = false;
-            if (button.gameObject.name.ToLower() == "move" && BattleManager.selectedUnit.GetComponent<Unit>().HasMoved) button.IsEnabled = false;
-            InputManager.contextButtonList.Add(button);
-        }
-
-    }
-
-    public void PopulateLoadMenu() {
-        GameObject parent = GameObject.Find("Content");
-        saveList = null;
-        //clear existing items
-        for (int i = 0; i < parent.transform.childCount; i++) {
-            Destroy(parent.transform.GetChild(i).gameObject);
-        }
-        saveList = SaveData.GetSaves();
-        for (int i = 0; i < saveList.Count; i++) {
-            GameObject saveDataPanel = Instantiate(Resources.Load("Prefab/UI/SaveDataPanel")) as GameObject;
-            saveDataPanel.transform.SetParent(parent.transform);
-            saveDataPanel.transform.localPosition = Vector3.zero;
-            saveDataPanel.transform.localRotation = Quaternion.identity;
-            saveDataPanel.transform.localScale = Vector3.one;
-            TextMeshProUGUI slot = saveDataPanel.transform.Find("SlotNumber").GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI checkpoint = saveDataPanel.transform.Find("Checkpoint").GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI Time = saveDataPanel.transform.Find("Time").GetComponent<TextMeshProUGUI>();
-            slot.text = saveList[i].Slot.ToString("D3");
-            checkpoint.text = Checkpoints[saveList[i].Checkpoint % 7];
-            Time.text = FormatTime(saveList[i].GameTime);
-            IndexButton indexButton = slot.GetComponent<IndexButton>();
-            indexButton.index = i;
-            indexButton.confirm.AddListener(OnConfirmLoadGame);
-        }
-        SetMaxIndexForCurrentCanvas(saveList.Count);
-        GameObject.Find("LoadMenuCanvas(Clone)").transform.Find("Back").GetComponent<IndexButton>().index = CurrentCanvasMaxButtonIndex;
-    }
-
-
-    public void PopulateInventoryMenu() {
-        GameObject parent = GameObject.Find("Content");
-        //clear existing items
-        for (int i = 0; i < parent.transform.childCount; i++) {
-            Destroy(parent.transform.GetChild(i).gameObject);
-        }
-        int index = 0;
-        foreach (KeyValuePair<string, int> item in ItemManager.Instance.inventory) {
-            ItemData itemData = ItemManager.Instance.allItems.Find(x => x.itemName == item.Key);
-            GameObject itemPanel = Instantiate(Resources.Load("Prefab/UI/ItemPanel")) as GameObject;
-            itemPanel.transform.SetParent(parent.transform);
-            itemPanel.transform.localPosition = Vector3.zero;
-            itemPanel.transform.localRotation = Quaternion.identity;
-            itemPanel.transform.localScale = Vector3.one;
-            TextMeshProUGUI name = itemPanel.transform.Find("ItemName").GetComponent<TextMeshProUGUI>();
-            TextMeshProUGUI qty = itemPanel.transform.Find("Qty").GetComponent<TextMeshProUGUI>();
-            Image thumbnail = itemPanel.transform.Find("Thumbnail").GetComponent<Image>();
-            name.text = item.Key;
-            name.rectTransform.sizeDelta = new Vector2(1100, 120);
-            qty.text = item.Value.ToString();
-            thumbnail.sprite = ItemManager.Instance.allItems.Find(x => x.itemName == item.Key).sprite;
-            IndexButton indexButton = name.GetComponent<IndexButton>();
-            InputManager.contextButtonList.Add(indexButton);
-            if (index % 2 == 0) {
-                indexButton.index = index / 2;
-                indexButton.columnIndex = 0;
-            } else {
-                indexButton.index = index / 2;
-                indexButton.columnIndex = 1;
-            }
-            index++;
-            ConsumableItemData cid = itemData as ConsumableItemData;
-            PersistentItemData pid = itemData as PersistentItemData;
-            indexButton.select.AddListener(() => {
-                GameObject desc = GameObject.Find("Description");
-                desc.GetComponent<TextMeshProUGUI>().text = itemData.description;
-            });
-            if (cid == null) {
-                indexButton.IsDimmed = true;
-                qty.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
-            } else {
-                indexButton.confirm.AddListener(() => {
-                    BattleManager.UseItem = cid.effect;
-                    BattleManager.ChangePhase(PhaseOfTurn.Item);
-                });
-            }
-
-        }
-        int maxIndex = ItemManager.Instance.inventory.Count % 2 == 0 ? ItemManager.Instance.inventory.Count / 2 - 1: ItemManager.Instance.inventory.Count / 2;
-        SetMaxIndexForCurrentCanvas(maxIndex);
-    }
 
     public void OnConfirmLoadGame() {
         BattleManager.saveData = saveList[buttonIndex];

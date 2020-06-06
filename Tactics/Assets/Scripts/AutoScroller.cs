@@ -15,7 +15,7 @@ public class AutoScroller : MonoBehaviour {
 
     void Update() {
         int buttonIndex = CanvasManager.Instance.buttonIndex;
-        int maxButtonIndex = CanvasManager.Instance.CurrentCanvasMaxButtonIndex;
+        int maxButtonIndex = CanvasManager.Instance.MaxButtonIndex;
         //       Debug.Log(buttonIndex + " " + maxButtonIndex);
 
         if (InputManager.GoingSouth(InputManager.deadZone) && buttonIndex > 2 && !isHeld) {

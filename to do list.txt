@@ -1,10 +1,16 @@
 to do list
 
-add spells menu
-add unit expanded info/equipment menu
-scale down unit info panels
-implement grid buttons for inventory (make index continuous from bottom of one column to top on next)
+Battle
+	added prayer menu
+	add unit expanded info?? undecided
+	add effect/attack tag on unit upon confirm
 
-done
-fade not working on canvases, probably being destroyed before fade ends
-implement grey out for buttons instead of disabling button
+Travel
+	decide on travel style
+	add equipment menu
+
+Done
+	fix canvas fading
+	implement greyout for buttons
+	implement grid buttons
+	added prayer menu

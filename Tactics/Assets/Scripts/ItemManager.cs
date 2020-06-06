@@ -29,7 +29,8 @@ public class ItemManager : MonoBehaviour {
                         Instance.inventory.Add(cItem.GetComponent<ItemDisplay>().data.itemName, 1);
                     }
                     Destroy(cItem.gameObject);
-                    return;
+                    //FOR TESTING ONLY
+                    //return;
                 }
             }
         }

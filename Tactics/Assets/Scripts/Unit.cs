@@ -12,7 +12,7 @@ public class Unit : MonoBehaviour {
     public int experience;
     public string unitName;
     public int maxHp;
-    public int maxMp;
+    public int maxFaith;
     public int HP {
         get {
             return hp;
@@ -29,22 +29,22 @@ public class Unit : MonoBehaviour {
     }
     [SerializeField]
     private int hp;
-    public int MP {
+    public int Faith {
         get {
-            return mp;
+            return faith;
         }
         set {
-            if (value > maxMp) {
-                mp = maxMp;
+            if (value > maxFaith) {
+                faith = maxFaith;
             } else if (value < 0) {
-                mp = 0;
+                faith = 0;
             } else {
-                mp = value;
+                faith = value;
             }
         }
     }
     [SerializeField]
-    private int mp;
+    private int faith;
     public int movement;
     public int jump;
     public int speed;
@@ -61,9 +61,9 @@ public class Unit : MonoBehaviour {
     public TargetStyle targetStyle;
     public int targetRange;
     [SerializeField]
-    public List<PersistentItemData> equipment;
+    public List<string> equipment;
     [SerializeField]
-    public List<PrayerData> prayers;
+    public List<string> prayers;
 
     public int SpeedCounter {
         get {
@@ -109,7 +109,7 @@ public class Unit : MonoBehaviour {
     void Start() {
         unitData = new UnitData();
         hp = maxHp;
-        mp = maxMp;
+        faith = maxFaith;
         ActiveUnit = true;
         if (speed == 0) {
             speed = 1;
@@ -136,7 +136,7 @@ public class Unit : MonoBehaviour {
         unitData.Experience = experience;
         unitData.UnitName = unitName;
         unitData.MaxHP = maxHp;
-        unitData.MaxMP = maxMp;
+        unitData.MaxFaith = maxFaith;
         unitData.Movement = movement;
         unitData.Jump = jump;
         unitData.Speed = speed;
@@ -145,14 +145,14 @@ public class Unit : MonoBehaviour {
         unitData.IsPlayer = isPlayer;
         unitData.TStyle = targetStyle;
         unitData.TargetRange = targetRange;
-        foreach (PersistentItemData itemData in equipment) {
-            if (itemData != null) {
-                unitData.Equipment.Add(itemData.itemName);
+        foreach (string itemName in equipment) {
+            if (itemName != null) {
+                unitData.Equipment.Add(itemName);
             }
         }
-        foreach (PrayerData prayerData in prayers) {
-            if (prayerData != null) {
-                unitData.Prayers.Add(prayerData.prayerName);
+        foreach (string prayerName in prayers) {
+            if (prayerName != null) {
+                unitData.Prayers.Add(prayerName);
             }
         }
         unitData.PosRot = new float[,] { { transform.position.x, transform.position.y, transform.position.z },
@@ -167,7 +167,7 @@ public class Unit : MonoBehaviour {
         experience = unitData.Experience;
         unitName = unitData.UnitName;
         maxHp = unitData.MaxHP;
-        maxMp = unitData.MaxMP;
+        maxFaith = unitData.MaxFaith;
         movement = unitData.Movement;
         jump = unitData.Jump;
         speed = unitData.Speed;
@@ -176,8 +176,16 @@ public class Unit : MonoBehaviour {
         isPlayer = unitData.IsPlayer;
         targetStyle = unitData.TStyle;
         targetRange = unitData.TargetRange;
-        //equipment = unitData.Equipment;
-        //prayers = unitData.Prayers;
+        foreach (string itemName in unitData.Equipment) {
+            if (itemName != null) {
+                equipment.Add(itemName);
+            }
+        }
+        foreach (string prayerName in unitData.Prayers) {
+            if (prayerName != null) {
+                prayers.Add(prayerName);
+            }
+        }
         transform.position = new Vector3(unitData.PosRot[0, 0], unitData.PosRot[0, 1], unitData.PosRot[0, 2]);
         transform.eulerAngles = new Vector3(unitData.PosRot[1, 0], unitData.PosRot[1, 1], unitData.PosRot[1, 2]);
     }

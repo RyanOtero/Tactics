@@ -24,6 +24,6 @@ public class ConsumableItemEffectList : ScriptableObject {
     }
 
     public void strangeMushroom() {
-        target.MP += 20;
+        target.Faith += 20;
     }
 }

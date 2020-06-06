@@ -17,7 +17,7 @@ public class UnitData {
     public int Experience { get; set; }
     public string UnitName { get; set; }
     public int MaxHP { get; set; }
-    public int MaxMP { get; set; }
+    public int MaxFaith { get; set; }
     public int Movement { get; set; }
     public int Jump { get; set; }
     public int Speed { get; set; }

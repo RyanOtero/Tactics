@@ -17,7 +17,7 @@ public class UnitInfoPanel : MonoBehaviour
         if (wasNull && unit != null) {
             transform.Find("UnitName").GetComponent<TextMeshProUGUI>().text = unit.GetComponent<Unit>().unitName;
             transform.Find("HPLabel").GetComponent<TextMeshProUGUI>().text = "HP: " + unit.GetComponent<Unit>().HP + "/" + unit.GetComponent<Unit>().maxHp;
-            transform.Find("MPLabel").GetComponent<TextMeshProUGUI>().text = "MP: " + unit.GetComponent<Unit>().MP + "/" + unit.GetComponent<Unit>().maxMp;
+            transform.Find("FaithLabel").GetComponent<TextMeshProUGUI>().text = "Faith: " + unit.GetComponent<Unit>().Faith + "/" + unit.GetComponent<Unit>().maxFaith;
             transform.Find("LvlLabel").GetComponent<TextMeshProUGUI>().text = "Lvl: " + unit.GetComponent<Unit>().level;
             transform.Find("ExpLabel").GetComponent<TextMeshProUGUI>().text = "Exp: " + unit.GetComponent<Unit>().experience;
 

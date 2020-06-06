@@ -11,6 +11,7 @@ public class PrayerData : ScriptableObject {
     public Sprite sprite;
     public string prayerName;
     public string description;
+    public int cost;
     public UnityEvent effect;
 }
 

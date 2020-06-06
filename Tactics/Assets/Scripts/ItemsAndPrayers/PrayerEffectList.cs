@@ -38,4 +38,12 @@ public class PrayerEffectList : ScriptableObject {
             }
         }
     }
+
+    public void Curse() {
+
+    }
+
+    public void Bless() {
+
+    }
 }
