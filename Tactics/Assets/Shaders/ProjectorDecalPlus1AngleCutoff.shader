@@ -13,7 +13,7 @@ Shader "Projector/DecalPlus1AngleCutoff"
 
 		Subshader
 	{
-		Tags{ "RenderType" = "Transparent"  "Queue" = "Transparent+1" }
+		Tags{ "RenderType" = "Transparent"  "Queue" = "Transparent+101" }
 		Pass
 	{
 		ZWrite Off

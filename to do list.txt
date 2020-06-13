@@ -1,16 +1,20 @@
 to do list
 
 Battle
-	added prayer menu
+	Pick direction at end turn
+	implement multiple height tiles
 	add unit expanded info?? undecided
+	
 	add effect/attack tag on unit upon confirm
+	add counter gameobject with counter script to hold effect counters and reversal anonymous methods
 
 Travel
 	decide on travel style
 	add equipment menu
 
 Done
-	fix canvas fading
-	implement greyout for buttons
-	implement grid buttons
-	added prayer menu
+add prayer target effect area
+
+Colors
+0.9075461f, 0.945098f, 0.3818197f
+1f, 1f, 0f

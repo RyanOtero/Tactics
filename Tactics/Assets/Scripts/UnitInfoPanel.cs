@@ -15,14 +15,14 @@ public class UnitInfoPanel : MonoBehaviour
     {
         if (!wasNull && unit != null) wasNull = true;
         if (wasNull && unit != null) {
-            transform.Find("UnitName").GetComponent<TextMeshProUGUI>().text = unit.GetComponent<Unit>().unitName;
-            transform.Find("HPLabel").GetComponent<TextMeshProUGUI>().text = "HP: " + unit.GetComponent<Unit>().HP + "/" + unit.GetComponent<Unit>().maxHp;
-            transform.Find("FaithLabel").GetComponent<TextMeshProUGUI>().text = "Faith: " + unit.GetComponent<Unit>().Faith + "/" + unit.GetComponent<Unit>().maxFaith;
-            transform.Find("LvlLabel").GetComponent<TextMeshProUGUI>().text = "Lvl: " + unit.GetComponent<Unit>().level;
-            transform.Find("ExpLabel").GetComponent<TextMeshProUGUI>().text = "Exp: " + unit.GetComponent<Unit>().experience;
+            transform.Find("UnitName").GetComponent<TextMeshProUGUI>().text = unit.unitName;
+            transform.Find("HPLabel").GetComponent<TextMeshProUGUI>().text = "HP: " + unit.HP + "/" + unit.maxHp;
+            transform.Find("FaithLabel").GetComponent<TextMeshProUGUI>().text = "Faith: " + unit.Faith + "/" + unit.maxFaith;
+            transform.Find("LvlLabel").GetComponent<TextMeshProUGUI>().text = "Lvl: " + unit.level;
+            transform.Find("ExpLabel").GetComponent<TextMeshProUGUI>().text = "Exp: " + unit.experience;
 
             string sList = "";
-            foreach (UnitStatus status in unit.GetComponent<Unit>().statusList) {
+            foreach (UnitStatus status in unit.statusList) {
                 sList += status + ", ";
             }
             if (sList != "") sList = sList.Substring(0, sList.Length - 3);

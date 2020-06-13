@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class Unit : MonoBehaviour {
 
@@ -59,11 +60,14 @@ public class Unit : MonoBehaviour {
     public UnitData unitData;
     public bool isPlayer;
     public TargetStyle targetStyle;
-    public int targetRange;
+    public int bandThickness;
+    public int reach;
     [SerializeField]
     public List<string> equipment;
     [SerializeField]
     public List<string> prayers;
+    public int itemReach;
+
 
     public int SpeedCounter {
         get {
@@ -144,7 +148,8 @@ public class Unit : MonoBehaviour {
         unitData.Defense = defense;
         unitData.IsPlayer = isPlayer;
         unitData.TStyle = targetStyle;
-        unitData.TargetRange = targetRange;
+        unitData.BandThickness = bandThickness;
+        unitData.Reach = reach;
         foreach (string itemName in equipment) {
             if (itemName != null) {
                 unitData.Equipment.Add(itemName);
@@ -175,7 +180,8 @@ public class Unit : MonoBehaviour {
         defense = unitData.Defense;
         isPlayer = unitData.IsPlayer;
         targetStyle = unitData.TStyle;
-        targetRange = unitData.TargetRange;
+        bandThickness = unitData.BandThickness;
+        reach = unitData.Reach;
         foreach (string itemName in unitData.Equipment) {
             if (itemName != null) {
                 equipment.Add(itemName);

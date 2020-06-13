@@ -17,8 +17,8 @@ public class CanvasManager : MonoBehaviour {
     public float fadeSpeed;
     private static bool isHeld;
 
-    public int MaxButtonIndex { get; private set; }
-    public int MaxButtonColumnIndex { get; private set; }
+    public int maxButtonIndex;
+    public int maxButtonColumnIndex;
     //[HideInInspector]
     public GameObject activeCanvas;
     //[HideInInspector]
@@ -42,6 +42,7 @@ public class CanvasManager : MonoBehaviour {
     public int buttonIndex;
     public int buttonColumnIndex;
     public int previousButtonIndex;
+    public int previousButtonColumnIndex;
     public GameObject unitInfoPanel;
     public GameObject targetInfoPanel;
 
@@ -65,9 +66,10 @@ public class CanvasManager : MonoBehaviour {
 
     void Start() {
         //setup for main menu/pause menu
-        MaxButtonIndex = 3;
+        maxButtonIndex = 3;
         saveList = null;
         if (SceneManager.GetActiveScene().name == "MainMenu") activeCanvas = GetCanvas("main");
+        Cursor.ChangeCursorColors();
     }
 
     void Update() {
@@ -126,10 +128,6 @@ public class CanvasManager : MonoBehaviour {
         transition.GetComponent<Animator>().SetTrigger("FadeIn");
     }
 
-    public void SetMaxIndexForCurrentCanvas(int maxIndex) {
-        MaxButtonIndex = maxIndex;
-    }
-
     public void SavePreviousCanvasName() {
         if (activeCanvas != null) {
             previousCanvas = activeCanvas.name.ToLower().Replace("menucanvas(clone)", "");
@@ -138,15 +136,17 @@ public class CanvasManager : MonoBehaviour {
         }
     }
 
-    public void SetActiveCanvas(string canvasTypeToSwitchTo, int bttnIndex = 0) {
+    public void SetActiveCanvas(string canvasTypeToSwitchTo, int bttnIndex = 0, int bttnColIndex = 0) {
         if (activeCanvas == null || !activeCanvas.name.ToLower().Contains(canvasTypeToSwitchTo.ToLower())) {
             GameObject canvasToSwitchTo = null;
             InputManager.CleanButtonList();
             canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
             StartCoroutine(FadeUIElement(canvasToSwitchTo, activeCanvas));
             previousButtonIndex = buttonIndex;
+            previousButtonColumnIndex = buttonColumnIndex;
             canvasToDestroy = activeCanvas;
             buttonIndex = bttnIndex;
+            buttonColumnIndex = bttnColIndex;
             SavePreviousCanvasName();
             activeCanvas = canvasToSwitchTo;
         }
@@ -172,39 +172,43 @@ public class CanvasManager : MonoBehaviour {
 
     public void ButtonConfirmAssign(GameObject canvas) {
         foreach (IndexButton bttn in canvas.GetComponentsInChildren<IndexButton>()) {
-            if (bttn.gameObject.name == "NewGame") bttn.confirm.AddListener(() => { GetCanvas("newgame"); });
-            if (bttn.gameObject.name == "LoadGame") bttn.confirm.AddListener(() => { ChangeScreen("load"); });
-            if (bttn.gameObject.name == "SaveGame") bttn.confirm.AddListener(() => { BattleManager.Instance.SaveGame(); });
-            if (bttn.gameObject.name == "Options") bttn.confirm.AddListener(() => { ChangeScreen("options"); });
-            if (bttn.gameObject.name == "Quit") bttn.confirm.AddListener(() => { StartCoroutine(FadeAndQuit()); });
-            if (bttn.gameObject.name == "MainMenu") bttn.confirm.AddListener(() => { StartCoroutine(FadeAndLoadScene("MainMenu")); });
-            if (bttn.gameObject.name == "Fullscreen") bttn.confirm.AddListener(FlipFullscreenToggle);
-            if (bttn.gameObject.name == "Controls") bttn.confirm.AddListener(() => { ChangeScreen("controls"); });
-            if (bttn.gameObject.name == "Move") bttn.confirm.AddListener(() => { BattleManager.ChangePhase(PhaseOfTurn.Move); });
-            if (bttn.gameObject.name == "Attack") bttn.confirm.AddListener(() => { BattleManager.ChangePhase(PhaseOfTurn.Attack); });
-            if (bttn.gameObject.name == "Prayer") bttn.confirm.AddListener(() => {
+            if (bttn.name == "NewGame") bttn.confirm.AddListener(() => { GetCanvas("newgame"); });
+            if (bttn.name == "LoadGame") bttn.confirm.AddListener(() => { ChangeScreen("load"); });
+            if (bttn.name == "SaveGame") bttn.confirm.AddListener(() => { BattleManager.Instance.SaveGame(); });
+            if (bttn.name == "Options") bttn.confirm.AddListener(() => { ChangeScreen("options"); });
+            if (bttn.name == "Quit") bttn.confirm.AddListener(() => { StartCoroutine(FadeAndQuit()); });
+            if (bttn.name == "MainMenu") bttn.confirm.AddListener(() => { StartCoroutine(FadeAndLoadScene("MainMenu")); });
+            if (bttn.name == "Fullscreen") bttn.confirm.AddListener(FlipFullscreenToggle);
+            if (bttn.name == "Controls") bttn.confirm.AddListener(() => { ChangeScreen("controls"); });
+            if (bttn.name == "Move") bttn.confirm.AddListener(() => { BattleManager.ChangePhase(PhaseOfTurn.Move); });
+            if (bttn.name == "Attack") bttn.confirm.AddListener(() => { BattleManager.ChangePhase(PhaseOfTurn.Attack); });
+            if (bttn.name == "Prayer") bttn.confirm.AddListener(() => {
                 BattleManager.ChangePhase(PhaseOfTurn.SelectPrayer);
                 SetActiveCanvas("prayer");
             });
-            if (bttn.gameObject.name == "Item") bttn.confirm.AddListener(() => {
+            if (bttn.name == "Item") bttn.confirm.AddListener(() => {
                 BattleManager.ChangePhase(PhaseOfTurn.SelectItem);
                 SetActiveCanvas("inventory");
             });
-            if (bttn.gameObject.name == "EndTurn") bttn.confirm.AddListener(() => {
-                BattleManager.selectedUnit.GetComponent<Unit>().HasMoved = true;
-                BattleManager.selectedUnit.GetComponent<Unit>().HasActed = true;
+            if (bttn.name == "Info") bttn.confirm.AddListener(() => {
+                BattleManager.ChangePhase(PhaseOfTurn.UnitInfo);
+                SetActiveCanvas("info");
+            });
+            if (bttn.name == "EndTurn") bttn.confirm.AddListener(() => {
+                BattleManager.SelectedUnit.HasMoved = true;
+                BattleManager.SelectedUnit.HasActed = true;
                 InputManager.Instance.PostPhaseEval();
             });
 
-            if (bttn.gameObject.name == "Back") {
+            if (bttn.name == "Back") {
                 if (SceneManager.GetActiveScene().name == "MainMenu") {
-                    if (!canvas.gameObject.name.ToLower().Contains("controls")) {
+                    if (!canvas.name.ToLower().Contains("controls")) {
                         bttn.confirm.AddListener(() => { ChangeScreen("main"); });
                     } else {
                         bttn.confirm.AddListener(() => { ChangeScreen("options"); });
                     }
                 } else if (SceneManager.GetActiveScene().name == "Battle") {
-                    if (!canvas.gameObject.name.ToLower().Contains("controls")) {
+                    if (!canvas.name.ToLower().Contains("controls")) {
                         bttn.confirm.AddListener(() => { ChangeScreen("pause"); });
                     } else {
                         bttn.confirm.AddListener(() => { ChangeScreen("options"); });
@@ -220,65 +224,76 @@ public class CanvasManager : MonoBehaviour {
             case "main":
                 canvas = Instantiate(Resources.Load("Prefab/UI/MainMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                MaxButtonIndex = 3;
-                MaxButtonColumnIndex = 0;
+                maxButtonIndex = 3;
+                maxButtonColumnIndex = 0;
                 break;
             case "options":
                 canvas = Instantiate(Resources.Load("Prefab/UI/OptionsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 SetupOptionsMenu(canvas);
-                MaxButtonIndex = 5;
-                MaxButtonColumnIndex = 0;
+                maxButtonIndex = 5;
+                maxButtonColumnIndex = 0;
                 break;
             case "load":
                 canvas = Instantiate(Resources.Load("Prefab/UI/LoadMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
                 PopulateLoadMenu();
-                MaxButtonColumnIndex = 0;
+                maxButtonColumnIndex = 0;
                 break;
             case "controls":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ControlsMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                MaxButtonIndex = 0;
-                MaxButtonColumnIndex = 0;
+                maxButtonIndex = 0;
+                maxButtonColumnIndex = 0;
                 break;
             case "newgame":
                 if (activeCanvas.name.ToLower().Contains("main")) BattleManager.saveData = null;
                 StartCoroutine(FadeAndLoadScene("Battle"));
-                MaxButtonIndex = 0;
-                MaxButtonColumnIndex = 0;
+                maxButtonIndex = 0;
+                maxButtonColumnIndex = 0;
                 break;
             case "action":
                 canvas = Instantiate(Resources.Load("Prefab/UI/ActionMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                SetupActionMenu(canvas);
-                MaxButtonIndex = 4;
-                MaxButtonColumnIndex = 0;
+                canvas.GetComponent<CanvasGroup>().alpha = 0;
+                PopulateActionMenu(canvas);
+                maxButtonIndex = 5;
+                maxButtonColumnIndex = 0;
                 break;
             case "pause":
                 canvas = Instantiate(Resources.Load("Prefab/UI/PauseMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
-                MaxButtonIndex = 4;
-                MaxButtonColumnIndex = 0;
+                canvas.GetComponent<CanvasGroup>().alpha = 0;
+                maxButtonIndex = 4;
+                maxButtonColumnIndex = 0;
                 SavePreviousCanvasName();
                 break;
             case "prayer":
                 canvas = Instantiate(Resources.Load("Prefab/UI/PrayerMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
+                canvas.GetComponent<CanvasGroup>().alpha = 0;
                 PopulatePrayerMenu();
-                MaxButtonColumnIndex = 1;
+                maxButtonColumnIndex = 1;
                 break;
             case "inventory":
                 canvas = Instantiate(Resources.Load("Prefab/UI/InventoryMenuCanvas")) as GameObject;
                 canvas.GetComponent<Canvas>().worldCamera = Camera.main;
+                canvas.GetComponent<CanvasGroup>().alpha = 0;
                 PopulateInventoryMenu();
-                MaxButtonColumnIndex = 1;
+                maxButtonColumnIndex = 1;
+                break;
+            case "info":
+                canvas = Instantiate(Resources.Load("Prefab/UI/InfoMenuCanvas")) as GameObject;
+                canvas.GetComponent<Canvas>().worldCamera = Camera.main;
+                canvas.GetComponent<CanvasGroup>().alpha = 0;
+                PopulateInfoMenu();
+                maxButtonColumnIndex = 0;
                 break;
             case "store":
 
                 break;
             case "none":
-                MaxButtonIndex = 0;
+                maxButtonIndex = 0;
                 break;
             default:
                 break;
@@ -348,12 +363,24 @@ public class CanvasManager : MonoBehaviour {
     }
     #endregion
 
-     public void SetupActionMenu(GameObject canvas) {
+    public void PopulateActionMenu(GameObject canvas) {
+        List<string> buttonsToDestroy = new List<string> { "move", "attack", "item", "prayer", "endturn" };
         List<string> actions = new List<string>() { "attack", "item", "prayer" };
-        foreach (IndexButton button in canvas.GetComponentsInChildren<IndexButton>()) {
-            if (actions.Contains(button.gameObject.name.ToLower()) && BattleManager.selectedUnit.GetComponent<Unit>().HasActed) button.IsEnabled = false;
-            if (button.gameObject.name.ToLower() == "move" && BattleManager.selectedUnit.GetComponent<Unit>().HasMoved) button.IsEnabled = false;
-            InputManager.contextButtonList.Add(button);
+        if (BattleManager.SelectedUnit == BattleManager.activeUnitList[0]) {
+            foreach (IndexButton button in canvas.GetComponentsInChildren<IndexButton>()) {
+                if (actions.Contains(button.name.ToLower()) && BattleManager.SelectedUnit.HasActed) button.IsEnabled = false;
+                if (button.name.ToLower() == "move" && BattleManager.SelectedUnit.HasMoved) button.IsEnabled = false;
+                InputManager.contextButtonList.Add(button);
+                if (button.name.ToLower() == "prayer" && BattleManager.SelectedUnit.maxFaith == 0) button.IsEnabled = false;
+            }
+
+        } else {
+            IndexButton[] buttons = canvas.GetComponentsInChildren<IndexButton>();
+            for (int i = buttons.Length - 1; i > -1; i--) {
+                if (buttonsToDestroy.Contains(buttons[i].name.ToLower())) {
+                    Destroy(buttons[i].gameObject);
+                }
+            }
         }
 
     }
@@ -382,8 +409,8 @@ public class CanvasManager : MonoBehaviour {
             indexButton.index = i;
             indexButton.confirm.AddListener(OnConfirmLoadGame);
         }
-        SetMaxIndexForCurrentCanvas(saveList.Count);
-        GameObject.Find("LoadMenuCanvas(Clone)").transform.Find("Back").GetComponent<IndexButton>().index = MaxButtonIndex;
+        maxButtonIndex = saveList.Count;
+        GameObject.Find("LoadMenuCanvas(Clone)").transform.Find("Back").GetComponent<IndexButton>().index = maxButtonIndex;
     }
 
     public void PopulateInventoryMenu() {
@@ -434,8 +461,7 @@ public class CanvasManager : MonoBehaviour {
             }
 
         }
-        int maxIndex = ItemManager.Instance.inventory.Count % 2 == 0 ? ItemManager.Instance.inventory.Count / 2 - 1 : ItemManager.Instance.inventory.Count / 2;
-        SetMaxIndexForCurrentCanvas(maxIndex);
+        maxButtonIndex = ItemManager.Instance.inventory.Count % 2 == 0 ? ItemManager.Instance.inventory.Count / 2 - 1 : ItemManager.Instance.inventory.Count / 2;
     }
 
     public void PopulatePrayerMenu() {
@@ -445,7 +471,7 @@ public class CanvasManager : MonoBehaviour {
             Destroy(parent.transform.GetChild(i).gameObject);
         }
         int index = 0;
-        foreach (string prayer in BattleManager.selectedUnit.prayers) {
+        foreach (string prayer in BattleManager.SelectedUnit.prayers) {
             PrayerData prayerData = BattleManager.allPrayers.Find(x => x.prayerName == prayer);
             GameObject prayerPanel = Instantiate(Resources.Load("Prefab/UI/PrayerPanel")) as GameObject;
             prayerPanel.transform.SetParent(parent.transform);
@@ -473,21 +499,30 @@ public class CanvasManager : MonoBehaviour {
                 GameObject desc = GameObject.Find("Description");
                 desc.GetComponent<TextMeshProUGUI>().text = prayerData.description;
             });
-            if (prayerData.cost > BattleManager.selectedUnit.Faith) {
+            if (prayerData.cost > BattleManager.SelectedUnit.Faith) {
                 indexButton.IsDimmed = true;
                 cost.GetComponent<TextMeshProUGUI>().fontMaterial = Resources.Load<Material>("Fonts & Materials/LiberationSans SDF Grey +103");
             } else {
                 indexButton.confirm.AddListener(() => {
+                    Cursor.isRestricted = prayerData.restrictCursor;
+                    BattleManager.Instance.prayerReach = prayerData.reach;
+                    BattleManager.Instance.prayerTargetStyle = prayerData.targetStyle;
+                    BattleManager.Instance.prayerBandThickness = prayerData.bandThickness;
+                    BattleManager.Instance.prayerEffectReach = prayerData.effectReach;
+                    BattleManager.Instance.prayerEffectTargetStyle = prayerData.effectTargetStyle;
+                    BattleManager.Instance.prayerEffectBandThickness = prayerData.effectBandThickness;
                     BattleManager.UsePrayer = prayerData.effect;
                     BattleManager.ChangePhase(PhaseOfTurn.Prayer);
                 });
             }
 
         }
-        int maxIndex = BattleManager.selectedUnit.prayers.Count % 2 == 0 ? BattleManager.selectedUnit.prayers.Count / 2 - 1 : BattleManager.selectedUnit.prayers.Count / 2;
-        SetMaxIndexForCurrentCanvas(maxIndex);
+        int maxIndex = BattleManager.SelectedUnit.prayers.Count % 2 == 0 ? BattleManager.SelectedUnit.prayers.Count / 2 - 1 : BattleManager.SelectedUnit.prayers.Count / 2;
+        maxButtonIndex = maxIndex;
     }
 
+    private void PopulateInfoMenu() {
+    }
     #region Menu Navigation Handling
 
     //handling horizontal input on options menu
@@ -564,7 +599,7 @@ public class CanvasManager : MonoBehaviour {
                 LoopIndexCheck();
             } else if (InputManager.GoingSouth(InputManager.deadZone) && !isHeld) {
                 isHeld = true;
-                if (buttonIndex == MaxButtonIndex) {
+                if (buttonIndex == maxButtonIndex) {
                     cIndex = buttonColumnIndex;
                     buttonColumnIndex++;
                     LoopColumnIndexCheck();
@@ -597,7 +632,7 @@ public class CanvasManager : MonoBehaviour {
                     LoopColumnIndexCheck();
                 } else if (InputManager.GoingEast(InputManager.deadZone) && !isHeld) {
                     isHeld = true;
-                    if (buttonColumnIndex == MaxButtonColumnIndex) {
+                    if (buttonColumnIndex == maxButtonColumnIndex) {
                         index = buttonIndex;
                         buttonIndex++;
                         LoopIndexCheck();
@@ -618,14 +653,14 @@ public class CanvasManager : MonoBehaviour {
 
     public void LoopIndexCheck() {
         if (buttonIndex != -100) {
-            if (buttonIndex > MaxButtonIndex) buttonIndex = 0;
-            else if (buttonIndex < 0) buttonIndex = MaxButtonIndex;
+            if (buttonIndex > maxButtonIndex) buttonIndex = 0;
+            else if (buttonIndex < 0) buttonIndex = maxButtonIndex;
         }
     }
 
     public void LoopColumnIndexCheck() {
-        if (buttonColumnIndex > MaxButtonColumnIndex) buttonColumnIndex = 0;
-        else if (buttonColumnIndex < 0) buttonColumnIndex = MaxButtonColumnIndex;
+        if (buttonColumnIndex > maxButtonColumnIndex) buttonColumnIndex = 0;
+        else if (buttonColumnIndex < 0) buttonColumnIndex = maxButtonColumnIndex;
     }
 
     #endregion

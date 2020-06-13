@@ -107,6 +107,11 @@ public class Tile : IComparable<Tile>, IEquatable<Tile> {
         }
     }
 
+
+    public bool SameXY(Tile t) {
+        if (x == t.x && y == t.y) return true;
+        return false;
+    }
     #endregion
 
     #region Implementations and Overrides

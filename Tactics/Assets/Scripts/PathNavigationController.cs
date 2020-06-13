@@ -35,7 +35,7 @@ public class PathNavigationController : MonoBehaviour {
         Vector3 endPointOffset = nextPoint + new Vector3(0, -heightDifference, 0);
 
         if (isMoving) {
-            BattleManager.cursor.SetActive(false);
+            //BattleManager.cursor.SetActive(false);
 
             //initialize variables if this is the first frame of movement
             if (path == null) path = BattleManager.selectedTile.path;
@@ -127,7 +127,7 @@ public class PathNavigationController : MonoBehaviour {
             }
             //when done with path, set variables to null/0
             if (transform.position == endPoint) {
-                BattleManager.cursor.SetActive(true);
+                //BattleManager.cursor.SetActive(true);
                 Reset();
                 isAtOffset = false;
             //if at endpoint, move to next startpoint and endpoint
@@ -156,7 +156,7 @@ public class PathNavigationController : MonoBehaviour {
 
 
     public void Reset() {
-        BattleManager.cursor.SetActive(true);
+        //BattleManager.cursor.SetActive(true);
         isMoving = false;
         startPoint = Vector3.zero;
         nextPoint = Vector3.zero;

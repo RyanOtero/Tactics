@@ -12,6 +12,13 @@ public class PrayerData : ScriptableObject {
     public string prayerName;
     public string description;
     public int cost;
+    public bool restrictCursor;
     public UnityEvent effect;
+    public int reach;
+    public int bandThickness;
+    public TargetStyle targetStyle;
+    public int effectReach;
+    public int effectBandThickness;
+    public TargetStyle effectTargetStyle;
 }
 

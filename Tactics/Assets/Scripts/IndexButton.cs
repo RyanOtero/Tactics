@@ -18,6 +18,7 @@ public class IndexButton : MonoBehaviour {
     private bool isConfirmable;
     public UnityEvent confirm = new UnityEvent();
     public UnityEvent select = new UnityEvent();
+    public static Transform ctrans;
 
     public bool IsEnabled {
         get => isEnabled;

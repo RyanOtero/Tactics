@@ -11,40 +11,45 @@ using System.Linq;
 //todo: player direction during movement, Character Builder, context menu, unit classes, AI
 
 
-public enum PhaseOfTurn { None, SelectUnit, Confirm, SelectAction, Move, Attack, Prayer, Item, SelectPrayer, SelectItem }
+public enum PhaseOfTurn { None, SelectUnit, Confirm, SelectAction, Move, Attack, Prayer, Item, SelectPrayer, SelectItem, UnitInfo }
 
 public sealed class BattleManager : MonoBehaviour {
     public static BattleManager Instance { get; private set; } = null;
 
     #region Fields
+
     public static int checkpoint;
 
     //Terrain, list of all units and list of units that have not moved this round
     public static List<Unit> unitList;
     public static List<Unit> activeUnitList;
     public static List<PrayerData> allPrayers;
-    //auq and speeds FOR TESTING
-    public List<Unit> auq;
-    public List<int> speeds;
     public static GameObject terrain;
     public static float jumpScale;
 
     //list of tiles, movement range, target range, projectors
     public static List<Tile> terrainTiles;
     public static List<Tile> availableMoves;
-    public static List<Tile> availableTargets;
-
-    public static List<Tile> targetArea;
-    public static Unit selectedUnit;
-    public Unit sUnit;
-    public static Unit targetUnit;
+    public static List<Tile> availableTargetTiles;
+    public static List<Tile> targetedTiles;
+    public static List<Tile> restrictedCursorRange;
+    public Unit selectedUnit;
+    public static Unit SelectedUnit { get { return Instance.selectedUnit; } set { Instance.selectedUnit = value; } }
+    public static List<Unit> targetUnits;
     public static Tile selectedTile;
-    public static Tile targetTile;
+
+    //prayer meta data
+    public int prayerReach;
+    public int prayerEffectReach;
+    public int prayerBandThickness;
+    public int prayerEffectBandThickness;
+    public TargetStyle prayerTargetStyle;
+    public TargetStyle prayerEffectTargetStyle;
+
     //original location of unit at beginning of movement
     public static Vector3 lastLocation;
     public static GameObject cursor;
     private static PhaseOfTurn phase;
-    //for testing orders
     private static float heightThreshold;
     public TextMeshProUGUI phaseLabel;
     public static PhaseOfTurn PreviousPhase { get; private set; }
@@ -74,22 +79,15 @@ public sealed class BattleManager : MonoBehaviour {
         activeUnitList = new List<Unit>();
         terrain = GameObject.FindGameObjectWithTag("Terrain");
         availableMoves = new List<Tile>();
-        availableTargets = new List<Tile>();
+        availableTargetTiles = new List<Tile>();
+        targetedTiles = new List<Tile>();
         terrainTiles = new List<Tile>();
-        ///////Have to make system to order units, probably by speed but will have to incorporate double turns
         unitList = unitList.OrderByDescending(x => x.speed).ThenByDescending(x => x.isPlayer).ToList();
         activeUnitList = unitList.ToList();
         allPrayers = new List<PrayerData>(Resources.LoadAll<PrayerData>("ScriptableObjects/Prayers"));
-        //auq and speeds FOR TESTING
-        auq = activeUnitList;
-        speeds = new List<int>();
-        foreach (Unit unit in auq) {
-            speeds.Add(unit.speed);
-        }
-        selectedUnit = null;
-        targetUnit = null;
+        SelectedUnit = null;
+        targetUnits = new List<Unit>();
         selectedTile = null;
-        targetTile = null;
         terrainTiles = GetTerrainTiles();
         Phase = PhaseOfTurn.SelectUnit;
         PreviousPhase = PhaseOfTurn.None;
@@ -110,9 +108,9 @@ public sealed class BattleManager : MonoBehaviour {
                     if (!activeUnitList.Contains(unit)) inactiveUnitList.Add(unit);
                 }
                 inactiveUnitList = inactiveUnitList.OrderByDescending(x => x.SpeedCounter).ThenByDescending(x => x.isPlayer).ToList();
-                    foreach (Unit unit in inactiveUnitList) {
-                        if (unit.ActiveUnit) activeUnitList.Add(unit);
-                    }
+                foreach (Unit unit in inactiveUnitList) {
+                    if (unit.ActiveUnit) activeUnitList.Add(unit);
+                }
             } while (activeUnitList.Count < count);
         }
     }
@@ -124,10 +122,16 @@ public sealed class BattleManager : MonoBehaviour {
         //if cursor is over unit
         foreach (Unit u in unitList) {
             if (Phase == PhaseOfTurn.Attack) {
-                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && selectedUnit.isPlayer && !u.isPlayer
-                    || GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && !selectedUnit.isPlayer && u.isPlayer) unit = u;
+                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && SelectedUnit.isPlayer && !u.isPlayer
+                    || GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && !SelectedUnit.isPlayer && u.isPlayer) {
+                    unit = u;
+                    break;
+                }
             } else {
-                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject)) unit = u;
+                if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && u != SelectedUnit) {
+                    unit = u;
+                    break;
+                }
             }
         }
         if (unit != null) {
@@ -159,7 +163,8 @@ public sealed class BattleManager : MonoBehaviour {
         //if cursor is over unit
         foreach (Unit u in unitList) {
             if (GetX(cursor) == GetX(u.gameObject) && GetZ(cursor) == GetZ(u.gameObject) && u.GetComponent<Unit>().ActiveUnit == true) {
-                if (activeUnitList[0] == u) unit = u;
+                unit = u;
+                //if (activeUnitList[0] == u) unit = u;
             }
         }
         return unit;
@@ -168,33 +173,42 @@ public sealed class BattleManager : MonoBehaviour {
 
     #region UtilMethods
 
-    public static void PaintRange(List<Tile> tileList, string resourcePath) {
-        //destroy any existing painters, then repaint the move range
-        ClearPainters();
+    public static void PaintCursorRange(List<Tile> tileList, string resourcePath) {
+        ClearCursorPainters();
         foreach (Tile coord in tileList) {
-            GameObject mp = Instantiate(Resources.Load(resourcePath, typeof(GameObject)), new Vector3(coord.x, 10, coord.y), Quaternion.Euler(90, 0, 0)) as GameObject;
+            GameObject painter = Instantiate(Resources.Load(resourcePath, typeof(GameObject)), new Vector3(coord.x, 10, coord.y), Quaternion.Euler(90, 0, 0), cursor.transform) as GameObject;
         }
     }
 
-    //destroy all painters
+    public static void PaintRange(List<Tile> tileList, string resourcePath) {
+        ClearPainters();
+        foreach (Tile coord in tileList) {
+            GameObject painter = Instantiate(Resources.Load(resourcePath, typeof(GameObject)), new Vector3(coord.x, 10, coord.y), Quaternion.Euler(90, 0, 0)) as GameObject;
+        }
+    }
+
     public static void ClearPainters() {
         foreach (GameObject ptr in GameObject.FindGameObjectsWithTag("Painter")) {
             Destroy(ptr);
         }
     }
 
+    public static void ClearCursorPainters() {
+        foreach (GameObject ptr in GameObject.FindGameObjectsWithTag("CursorPainter")) {
+            Destroy(ptr);
+        }
+    }
+
     private static List<Tile> GetTerrainTiles() {
-        List<Tile> moves = new List<Tile>();
+        List<Tile> tTiles = new List<Tile>();
         //Grid size: i is x-axis,  j is z-axis
         for (int i = 0; i < terrain.GetComponent<Renderer>().bounds.size.x; i++) {
             for (int j = 0; j < terrain.GetComponent<Renderer>().bounds.size.z; j++) {
                 Tile t = new Tile(i, j);
-                moves.Add(t);
-                //GameObject n = GameObject.Instantiate(Resources.Load("Prefab/Number"), new Vector3(t.x, t.height + .05f, t.y), Quaternion.Euler(90, 0, 0)) as GameObject;
-                //n.GetComponent<TextMesh>().text = string.Format("{0}, {1}", i, j);
+                tTiles.Add(t);
             }
         }
-        return moves;
+        return tTiles;
     }
 
     public void ChangePhase(int phaseInt) {
@@ -240,6 +254,9 @@ public sealed class BattleManager : MonoBehaviour {
             case PhaseOfTurn.SelectItem:
                 Instance.phaseLabel.text = "Select Item";
                 break;
+            case PhaseOfTurn.UnitInfo:
+                Instance.phaseLabel.text = "Unit Info";
+                break;
             case PhaseOfTurn.None:
             default:
                 Instance.phaseLabel.text = "Ahh, Shit!";
@@ -253,16 +270,16 @@ public sealed class BattleManager : MonoBehaviour {
     public static List<Tile> GetMoveRange(Unit unit) {
         //get variables
         Transform trans = unit.transform;
-        int movement = unit.GetComponent<Unit>().movement;
+        int movement = unit.movement;
         Tile unitLocation = new Tile(trans.position.x, trans.position.z);
         List<Tile> moves = new List<Tile>();
 
         //check through terrain tiles for tiles to include in tile list
         terrainTiles.ForEach(t => {
             //Area bounded between four linear inequalities with player location as offset from 0,0
-            int a = t.x - unitLocation.x;
-            int b = t.y - unitLocation.y;
-            if ((a <= -b + movement) && (a >= -b - movement) && (a <= b + movement) && (a >= b - movement)) {
+            int x = t.x - unitLocation.x;
+            int y = t.y - unitLocation.y;
+            if ((y <= -x + movement) && (y >= -x - movement) && (y <= x + movement) && (y >= x - movement)) {
                 moves.Add(new Tile(t));
             }
         });
@@ -281,7 +298,7 @@ public sealed class BattleManager : MonoBehaviour {
         //remove ally tiles from range after path calculation
         moves.Sort(new InitialDistanceComparer());
 
-        if (selectedUnit.isPlayer) {
+        if (SelectedUnit.isPlayer) {
             RemoveOccupiedTiles(moves, unit, false, true);
             GetPaths(moves, unit);
             RemoveOccupiedTiles(moves, unit, true, false);
@@ -341,7 +358,7 @@ public sealed class BattleManager : MonoBehaviour {
         }
 
         //return a boolean for List.RemoveAll()
-        if (tile.path.Count - 1 + tile.additionalCost > unit.GetComponent<Unit>().movement) {
+        if (tile.path.Count - 1 + tile.additionalCost > unit.movement) {
             return true;
         } else {
             return false;
@@ -416,22 +433,22 @@ public sealed class BattleManager : MonoBehaviour {
         for (int a = 0; a < list.Count; a++) {
             Tile tile = list[a];
             //add tile to the East if it exists and is within height range
-            Tile tileToAdd = list.Find(x => (x.x == tile.x + 1 && x.y == tile.y && tile.height >= x.height - unit.GetComponent<Unit>().jump / jumpScale));
+            Tile tileToAdd = list.Find(x => (x.x == tile.x + 1 && x.y == tile.y && tile.height >= x.height - unit.jump / jumpScale));
             if (tileToAdd != null) {
                 tile.adjacent.Add(tileToAdd);
             }
             //add tile to the West if it exists and is within height range
-            tileToAdd = list.Find(x => (x.x == tile.x - 1 && x.y == tile.y && tile.height >= x.height - unit.GetComponent<Unit>().jump / jumpScale));
+            tileToAdd = list.Find(x => (x.x == tile.x - 1 && x.y == tile.y && tile.height >= x.height - unit.jump / jumpScale));
             if (tileToAdd != null) {
                 tile.adjacent.Add(tileToAdd);
             }
             //add tile to the North if it exists and is within height range
-            tileToAdd = list.Find(x => (x.x == tile.x && x.y == tile.y + 1 && tile.height >= x.height - unit.GetComponent<Unit>().jump / jumpScale));
+            tileToAdd = list.Find(x => (x.x == tile.x && x.y == tile.y + 1 && tile.height >= x.height - unit.jump / jumpScale));
             if (tileToAdd != null) {
                 tile.adjacent.Add(tileToAdd);
             }
             //add tile to the South if it exists and is within height range
-            tileToAdd = list.Find(x => (x.x == tile.x && x.y == tile.y - 1 && tile.height >= x.height - unit.GetComponent<Unit>().jump / jumpScale));
+            tileToAdd = list.Find(x => (x.x == tile.x && x.y == tile.y - 1 && tile.height >= x.height - unit.jump / jumpScale));
             if (tileToAdd != null) {
                 tile.adjacent.Add(tileToAdd);
             }
@@ -443,34 +460,119 @@ public sealed class BattleManager : MonoBehaviour {
 
     #region Targeting
 
+    public static List<Tile> GetTargetedTiles() {
+        int tReach;
+        TargetStyle targetStyle;
+        int bThickness;
+        if (phase == PhaseOfTurn.Prayer) {
+            tReach = Instance.prayerEffectReach;
+            targetStyle = Instance.prayerEffectTargetStyle;
+            bThickness = Instance.prayerEffectBandThickness;
+        } else {
+            tReach = 0;
+            targetStyle = TargetStyle.Diamond;
+            bThickness = SelectedUnit.bandThickness;
+        }
+        Tile cursorLocation = new Tile(GetX(cursor), GetZ(cursor));
+        List<Tile> effectTargetRange = new List<Tile>();
+
+        List<Tile> tTiles = new List<Tile>();
+        //Grid size: i is x-axis,  j is z-axis
+        for (int i = 0; i < Instance.prayerEffectReach * 2 + 1; i++) {
+            for (int j = 0; j < Instance.prayerEffectReach * 2 + 1; j++) {
+                Tile t = new Tile(GetX(cursor) + i - Instance.prayerEffectReach, GetZ(cursor) + j - Instance.prayerEffectReach);
+                tTiles.Add(t);
+                //GameObject n = GameObject.Instantiate(Resources.Load("Prefab/Number"), new Vector3(t.x, t.height + .05f, t.y), Quaternion.Euler(90, 0, 0)) as GameObject;
+                //n.GetComponent<TextMesh>().text = string.Format("{0}, {1}", i, j);
+            }
+        }
+
+        tTiles.ForEach(t => {
+            int x = t.x - (int)GetX(cursor);
+            int y = t.y - (int)GetZ(cursor);
+            int inner = tReach - bThickness;
+
+            switch (targetStyle) {
+                case TargetStyle.Band:
+                    List<Tile> list = new List<Tile>();
+                    if ((y <= -x + tReach) && (y >= -x - tReach) && (y <= x + tReach) && (y >= x - tReach)) {
+                        if ((y > -x + inner) || (y < -x - inner) || (y > x + inner) || (y < x - inner)) {
+                            effectTargetRange.Add(new Tile(t));
+                        }
+                    }
+                    break;
+                case TargetStyle.Cross:
+                    int xOffset = CalcXOffset(t, cursorLocation);
+                    int yOffset = CalcYOffset(t, cursorLocation);
+                    if (t.x == cursorLocation.x && yOffset <= tReach || t.y == cursorLocation.y && xOffset <= tReach) {
+                        effectTargetRange.Add(new Tile(t));
+                    }
+                    break;
+                case TargetStyle.Diamond:
+                    if ((y <= -x + tReach) && (y >= -x - tReach) && (y <= x + tReach) && (y >= x - tReach)) {
+                        effectTargetRange.Add(new Tile(t));
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+        });
+        return effectTargetRange;
+    }
+
     public static List<Tile> GetTargetRange(Unit unit, bool removePlayer, bool removeEnemy) {
         //get variables
-        Transform trans = unit.transform;
-        int tRange = unit.GetComponent<Unit>().targetRange;
-        Tile unitLocation = new Tile(trans.position.x, trans.position.z);
+        int tReach;
+        TargetStyle targetStyle;
+        int bThickness;
+        switch (Phase) {
+            case PhaseOfTurn.Attack:
+                tReach = unit.reach;
+                targetStyle = unit.targetStyle;
+                bThickness = unit.bandThickness;
+                break;
+            case PhaseOfTurn.Prayer:
+                tReach = Instance.prayerReach;
+                targetStyle = Instance.prayerTargetStyle;
+                bThickness = Instance.prayerBandThickness;
+                break;
+            case PhaseOfTurn.Item:
+                tReach = unit.itemReach;
+                targetStyle = TargetStyle.Diamond;
+                bThickness = unit.bandThickness;
+                break;
+            default:
+                tReach = unit.reach;
+                targetStyle = TargetStyle.Diamond;
+                bThickness = unit.bandThickness;
+                break;
+        }
+        Tile unitLocation = new Tile(GetX(unit), GetZ(unit));
         List<Tile> targetRange = new List<Tile>();
         terrainTiles.ForEach(t => {
-            int a = t.x - unitLocation.x;
-            int b = t.y - unitLocation.y;
+            int x = t.x - unitLocation.x;
+            int y = t.y - unitLocation.y;
+            int inner = tReach - bThickness;
 
-            switch (unit.GetComponent<Unit>().targetStyle) {
+            switch (targetStyle) {
                 case TargetStyle.Band:
-                    if ((a == -b + tRange) && (a <= b + tRange) && (a >= b - tRange) ||
-                    (a == -b - tRange) && (a <= b + tRange) && (a >= b - tRange) ||
-                    (a == b + tRange) && (a <= -b + tRange) && (a >= -b - tRange) ||
-                    (a == b - tRange) && (a <= -b + tRange) && (a >= -b - tRange)) {
-                        targetRange.Add(new Tile(t));
+                    List<Tile> list = new List<Tile>();
+                    if ((y <= -x + tReach) && (y >= -x - tReach) && (y <= x + tReach) && (y >= x - tReach)) {
+                        if ((y > -x + inner) || (y < -x - inner) || (y > x + inner) || (y < x - inner)) {
+                            targetRange.Add(new Tile(t));
+                        }
                     }
                     break;
                 case TargetStyle.Cross:
                     int xOffset = CalcXOffset(t, unitLocation);
                     int yOffset = CalcYOffset(t, unitLocation);
-                    if (t.x == unitLocation.x && yOffset <= tRange || t.y == unitLocation.y && xOffset <= tRange) {
+                    if (t.x == unitLocation.x && yOffset <= tReach || t.y == unitLocation.y && xOffset <= tReach) {
                         targetRange.Add(new Tile(t));
                     }
                     break;
                 case TargetStyle.Diamond:
-                    if ((a <= -b + tRange) && (a >= -b - tRange) && (a <= b + tRange) && (a >= b - tRange)) {
+                    if ((y <= -x + tReach) && (y >= -x - tReach) && (y <= x + tReach) && (y >= x - tReach)) {
                         targetRange.Add(new Tile(t));
                     }
                     break;
@@ -479,27 +581,23 @@ public sealed class BattleManager : MonoBehaviour {
             }
 
         });
-
-        //sort list so tiles closest to unit are first
-        //remove enemy tiles from range
-        //calculate paths to tiles in list
-        //remove ally tiles from range after path calculation
-        targetRange.Sort(new InitialDistanceComparer());
-
-        if (selectedUnit.isPlayer) {
+        if (SelectedUnit.isPlayer) {
             RemoveOccupiedTiles(targetRange, unit, removePlayer, removeEnemy);
         } else {
             RemoveOccupiedTiles(targetRange, unit, removeEnemy, removePlayer);
         }
+        restrictedCursorRange = targetRange;
         return targetRange;
     }
 
-    public static Unit TargetOnTile(Tile targetTile, List<Unit> unitList) {
-        return unitList.Find(u => {
-            Tile t = new Tile(u.transform.position.x, u.transform.position.z);
-            if (t == targetTile) return true;
-            return false;
+    public static List<Unit> TargetsOnTiles(List<Tile> targetTiles, List<Unit> unitList) {
+        List<Unit> units = new List<Unit>();
+         unitList.ForEach(u => {
+             targetTiles.ForEach(t => {
+                 if (t.x == GetX(u) && t.y == GetZ(u)) units.Add(u);
+             });
         });
+        return units;
     }
 
     #endregion
@@ -508,8 +606,8 @@ public sealed class BattleManager : MonoBehaviour {
     public static UnityEvent UsePrayer = new UnityEvent();
     public static UnityEvent UseItem = new UnityEvent();
     public static void Attack() {
-        Unit sUnit = selectedUnit.GetComponent<Unit>();
-        Unit tUnit = targetUnit.GetComponent<Unit>();
+        Unit sUnit = SelectedUnit;
+        List<Unit> tUnits = targetUnits;
         int damage = 0;
         //play attack animation
         Random.InitState((int)Time.time);
@@ -524,7 +622,7 @@ public sealed class BattleManager : MonoBehaviour {
             Debug.Log("Miss!");
         }
         //play recieve damage animation
-        tUnit.HP -= damage;
+        tUnits.ForEach(x => x.HP -= damage);
     }
     #endregion
 

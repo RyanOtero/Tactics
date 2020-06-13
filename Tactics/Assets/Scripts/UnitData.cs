@@ -5,7 +5,7 @@ using System.Collections.Generic;
 public enum UnitType { Main, Ally, SpecialAlly, Enemy, Boss}
 public enum UnitClass { Knight, Archer, Bard, Mage, Ranger, Undead }
 public enum UnitStatus { Fallen, Poison, Haste, Slow, Curse, Bless, Fear, Brave}
-public enum TargetStyle { Band, Cross, Diamond }
+public enum TargetStyle { Diamond, Cross, Band }
 
 [Serializable]
 public class UnitData {
@@ -24,11 +24,13 @@ public class UnitData {
     public float[,] PosRot { get; set; }
     public bool IsPlayer { get; set; }
     public TargetStyle TStyle { get; set; }
-    public int TargetRange { get; set; }
+    public int Reach { get; set; }
     public int Attack { get; set; }
     public int Defense { get; set; }
     public List<string> Equipment { get; set; }
     public List<string> Prayers { get; set; }
+    public int BandThickness { get; set; }
+
     public UnitData() {
         UType = UnitType.Ally;
         UClass = UnitClass.Knight;

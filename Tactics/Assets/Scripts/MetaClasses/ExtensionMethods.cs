@@ -23,12 +23,30 @@ public static class Extensions {
 
     #region Vector3
     public static bool WithinMargin(this Vector3 v3, int margin, Vector3 other) {
-        if (v3.x + margin/2f > other.x && v3.x - margin / 2f < other.x) {
+        if (v3.x + margin / 2f > other.x && v3.x - margin / 2f < other.x) {
             if (v3.y + margin / 2f > other.y && v3.y - margin / 2f < other.y) {
                 if (v3.z + margin / 2f > other.z && v3.z - margin / 2f < other.z) {
                     return true;
                 }
             }
+        }
+        return false;
+    }
+    #endregion
+
+    #region Int
+    public static bool WithinMargin(this int thisInt, int margin, int other) {
+        if (thisInt + margin / 2f > other && thisInt - margin / 2f < other) {
+            return true;
+        }
+        return false;
+    }
+    #endregion
+
+    #region Float
+    public static bool WithinMargin(this float thisFloat, int margin, float other) {
+        if (thisFloat + margin / 2f > other && thisFloat - margin / 2f < other) {
+            return true;
         }
         return false;
     }

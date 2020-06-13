@@ -19,6 +19,7 @@ public class CameraController : MonoBehaviour {
     public static bool isResettingCamParentOffset;
     public static float timer;
     public static Vector3 startPoint;
+    public static Transform ctrans;
 
 
     void Awake() {

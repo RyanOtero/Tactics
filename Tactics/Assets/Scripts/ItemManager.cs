@@ -22,7 +22,7 @@ public class ItemManager : MonoBehaviour {
     public static void PickUpItem() {
         if (GameObject.FindGameObjectsWithTag("Item").Length > 0) {
             foreach (GameObject cItem in GameObject.FindGameObjectsWithTag("Item")) {
-                if (cItem.transform.position == BattleManager.selectedUnit.transform.position) {
+                if (cItem.transform.position == BattleManager.SelectedUnit.transform.position) {
                     if (Instance.inventory.ContainsKey(cItem.GetComponent<ItemDisplay>().data.itemName)) {
                         Instance.inventory[cItem.GetComponent<ItemDisplay>().data.itemName]++;
                     } else {
@@ -36,7 +36,7 @@ public class ItemManager : MonoBehaviour {
         }
         if (GameObject.FindGameObjectsWithTag("Gold").Length > 0) {
             foreach (GameObject gold in GameObject.FindGameObjectsWithTag("Gold")) {
-                if (gold.transform.position == BattleManager.selectedUnit.transform.position) {
+                if (gold.transform.position == BattleManager.SelectedUnit.transform.position) {
                     Instance.goldTotal += gold.GetComponent<Gold>().value;
                     Destroy(gold);
                     return;
@@ -48,7 +48,7 @@ public class ItemManager : MonoBehaviour {
     public static void ItemOnWalkOver() {
         if (GameObject.FindGameObjectsWithTag("Item").Length > 0) {
             foreach (GameObject cItem in GameObject.FindGameObjectsWithTag("Item")) {
-                if (cItem.transform.position.WithinMargin(1, BattleManager.selectedUnit.transform.position)) {
+                if (cItem.transform.position.WithinMargin(1, BattleManager.SelectedUnit.transform.position)) {
                     cItem.GetComponentInChildren<Renderer>().enabled = false;
                 } else {
                     cItem.GetComponentInChildren<Renderer>().enabled = true;
@@ -58,7 +58,7 @@ public class ItemManager : MonoBehaviour {
 
         if (GameObject.FindGameObjectsWithTag("Gold").Length > 0) {
             foreach (GameObject gold in GameObject.FindGameObjectsWithTag("Gold")) {
-                if (gold.transform.position.WithinMargin(1, BattleManager.selectedUnit.transform.position)) {
+                if (gold.transform.position.WithinMargin(1, BattleManager.SelectedUnit.transform.position)) {
                     gold.GetComponentInChildren<Renderer>().enabled = false;
                 } else {
                     gold.GetComponentInChildren<Renderer>().enabled = true;

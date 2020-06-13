@@ -32,8 +32,6 @@ public class InputManager : MonoBehaviour {
 
     private int camRotationCounter;
     private int camElevationCounter;
-    public GameObject pauseCanvas;
-
     void Awake() {
         //Singleton Check
         if (Instance != null && Instance != this) {
@@ -96,43 +94,50 @@ public class InputManager : MonoBehaviour {
             CanvasManager.Instance.NavMenu();
             CanvasManager.Instance.NavHorizontalMenu();
             CanvasManager.Instance.NavOptions();
-
-            //Handle first frame after selecting an item in action menu
+            Cursor.Instance.CursorPainterNullCheck();
+            //Handle first frame after selecting an item in menu
             if (Phase == PhaseOfTurn.Attack && !isPaused) {
                 SetLastLocation();
-                availableTargets = GetTargetRange(selectedUnit, true, false);
-                PaintRange(availableTargets, "Prefab/Painters/AttackPainter");
+                availableTargetTiles = GetTargetRange(SelectedUnit, true, false);
+                PaintRange(availableTargetTiles, "Prefab/Painters/AttackPainter");
+                Cursor.ChangeCursorColors(true);
                 TogglePanelUp();
                 CanvasManager.Instance.SetActiveCanvas("none");
             } else if ((Phase == PhaseOfTurn.Prayer || Phase == PhaseOfTurn.Item) && !isPaused) {
                 SetLastLocation();
-                availableTargets = GetTargetRange(selectedUnit, false, false);
-                PaintRange(availableTargets, "Prefab/Painters/ActionPainter");
+                availableTargetTiles = GetTargetRange(SelectedUnit, false, false);
+                targetedTiles = GetTargetedTiles();
+                PaintRange(availableTargetTiles, "Prefab/Painters/ActionPainter");
+                PaintCursorRange(targetedTiles, "Prefab/Painters/CursorPainter");
+                Cursor.ChangeCursorColors(true);
                 TogglePanelUp();
                 CanvasManager.Instance.SetActiveCanvas("none");
             } else if (Phase == PhaseOfTurn.Move && !isPaused) {
                 SetLastLocation();
-                PathNavigationController.startRotation = selectedUnit.transform.eulerAngles;
-                availableMoves = GetMoveRange(selectedUnit);
+                Cursor.ChangeCursorColors();
+                PathNavigationController.startRotation = SelectedUnit.transform.eulerAngles;
+                availableMoves = GetMoveRange(SelectedUnit);
                 PaintRange(availableMoves, "Prefab/Painters/MovePainter");
                 CanvasManager.Instance.SetActiveCanvas("none");
                 TogglePanelUp();
             }
 
             //Cancel out of menu
-            else if (Phase == PhaseOfTurn.SelectAction && Input.GetButtonDown("Cancel") && !Input.GetKey(KeyCode.LeftShift) && !isPaused
-                && !selectedUnit.GetComponent<Unit>().HasActed && !selectedUnit.GetComponent<Unit>().HasMoved) {
-                CanvasManager.Instance.SetActiveCanvas("none");
-                ChangePhase(PhaseOfTurn.SelectUnit);
-                selectedUnit = null;
-                TogglePanelUp();
-            } else if ((Phase == PhaseOfTurn.SelectItem || Phase == PhaseOfTurn.SelectPrayer) && Input.GetButtonDown("Cancel")
-                  && !Input.GetKey(KeyCode.LeftShift) && !isPaused) {
-                CanvasManager.Instance.SetActiveCanvas("action", CanvasManager.Instance.previousButtonIndex);
-                ChangePhase(PhaseOfTurn.SelectAction);
+            else if (Input.GetButtonDown("Cancel") && !Input.GetKey(KeyCode.LeftShift) && !isPaused) {
+                if (Phase == PhaseOfTurn.SelectAction && !SelectedUnit.HasActed && !SelectedUnit.HasMoved) {
+                    CanvasManager.Instance.SetActiveCanvas("none");
+                    ChangePhase(PhaseOfTurn.SelectUnit);
+                    SelectedUnit = null;
+                    TogglePanelUp();
+                } else if (Phase == PhaseOfTurn.SelectItem || Phase == PhaseOfTurn.SelectPrayer) {
+                    CanvasManager.Instance.SetActiveCanvas("action", Phase == PhaseOfTurn.SelectItem ? 2 : 3);
+                    ChangePhase(PhaseOfTurn.SelectAction);
+                    Cursor.ChangeCursorColors();
+                } else if (Phase == PhaseOfTurn.UnitInfo) {
+                    CanvasManager.Instance.SetActiveCanvas("action", 4);
+
+                }
             }
-
-
             //if panel is down
         } else {
 
@@ -147,16 +152,18 @@ public class InputManager : MonoBehaviour {
                 CanvasManager.ToggleInputLock();
             }
 
-            if (Phase == PhaseOfTurn.SelectUnit) ShowUnitInfo();
-            if (Phase == PhaseOfTurn.Attack || Phase == PhaseOfTurn.Prayer || Phase == PhaseOfTurn.Item) ShowTargetInfo();
+            if (Phase == PhaseOfTurn.SelectUnit) {
+                ShowUnitInfo();
+            } else if (Phase != PhaseOfTurn.SelectUnit && Phase != PhaseOfTurn.Move) {
+                ShowTargetInfo();
+            }
 
             //handling submit button when panel is down 
             if (Input.GetButtonDown("Submit")) {
                 //different phases
                 if (Phase == PhaseOfTurn.SelectUnit) {
-                    selectedUnit = SelectUnit();
-                    BattleManager.Instance.sUnit = BattleManager.selectedUnit;
-                    if (selectedUnit != null) {
+                    SelectedUnit = SelectUnit();
+                    if (SelectedUnit != null) {
                         CanvasManager.Instance.SetActiveCanvas("action");
                         ChangePhase(PhaseOfTurn.SelectAction);
                         TogglePanelUp();
@@ -165,7 +172,7 @@ public class InputManager : MonoBehaviour {
                 } else if (Phase == PhaseOfTurn.Move) {
                     if (availableMoves.Exists(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)))) {
                         selectedTile = availableMoves.Find(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)));
-                        selectedUnit.GetComponent<PathNavigationController>().isMoving = true;
+                        SelectedUnit.GetComponent<PathNavigationController>().isMoving = true;
                         ChangePhase(PhaseOfTurn.Confirm);
                     }
                     //actions go to confirm phase
@@ -189,73 +196,119 @@ public class InputManager : MonoBehaviour {
                         PerformAction(UseItem);
                         CanvasManager.ToggleInputLock();
                         //confirmed move phase
-                    } else if (selectedUnit.GetComponent<PathNavigationController>().isMoving == false) {
+                    } else if (SelectedUnit.GetComponent<PathNavigationController>().isMoving == false) {
                         CanvasManager.ToggleInputLock();
                         ItemManager.PickUpItem();
-                        selectedUnit.GetComponent<Unit>().HasMoved = true;
+                        SelectedUnit.HasMoved = true;
                         PostPhaseEval();
                     }
                 }
             }
-            //handle cancel when panel is down
-            if (Input.GetButtonDown("Cancel") && !Input.GetKey(KeyCode.LeftShift) && selectedUnit != null) {
 
+            if (Input.GetButtonDown("Cancel") && Phase == PhaseOfTurn.SelectUnit) {
+                cursorTrans.position = new Vector3(GetX(activeUnitList[0]), GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0]));
+            }
+
+            //handle cancel when panel is down
+            if (Input.GetButtonDown("Cancel") && !Input.GetKey(KeyCode.LeftShift) && SelectedUnit != null) {
+                if (Phase != PhaseOfTurn.Confirm) Cursor.ChangeCursorColors();
                 //go back to move/attack/prayer/item phase
                 if (Phase == PhaseOfTurn.Confirm) {
                     if (PreviousPhase == PhaseOfTurn.Move) {
-                        selectedUnit.GetComponent<PathNavigationController>().Reset();
-                        selectedUnit.transform.eulerAngles = PathNavigationController.startRotation;
-                        selectedUnit.transform.position = lastLocation;
+                        SelectedUnit.GetComponent<PathNavigationController>().Reset();
+                        SelectedUnit.transform.eulerAngles = PathNavigationController.startRotation;
+                        SelectedUnit.transform.position = lastLocation;
                         ItemManager.ItemOnWalkOver();
-
                     }
+
                     ChangePhase(PreviousPhase);
                     //go back to action menu
                 } else if (Phase == PhaseOfTurn.Attack || Phase == PhaseOfTurn.Move) {
                     CanvasManager.ToggleInputLock();
-                    cursorTrans.position = new Vector3(GetX(selectedUnit), GetY(selectedUnit) + 1f, GetZ(selectedUnit));
+                    cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
                     ClearPainters();
+                    ClearCursorPainters();
+                    Cursor.ChangeCursorColors();
                     CanvasManager.Instance.SetActiveCanvas("action", CanvasManager.Instance.previousButtonIndex);
                     ChangePhase(PhaseOfTurn.SelectAction);
                     TogglePanelUp();
-                } else if (Phase == PhaseOfTurn.SelectPrayer || Phase == PhaseOfTurn.SelectItem) {
-                    CanvasManager.Instance.SetActiveCanvas("action", CanvasManager.Instance.previousButtonIndex);
-                    ChangePhase(PhaseOfTurn.SelectAction);
                 } else if (Phase == PhaseOfTurn.Prayer || Phase == PhaseOfTurn.Item) {
                     CanvasManager.ToggleInputLock();
-                    cursorTrans.position = new Vector3(GetX(selectedUnit), GetY(selectedUnit) + 1f, GetZ(selectedUnit));
+                    cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
                     ClearPainters();
-                    CanvasManager.Instance.SetActiveCanvas(CanvasManager.Instance.previousCanvas, CanvasManager.Instance.previousButtonIndex);
+                    ClearCursorPainters();
+                    Cursor.isRestricted = false;
+                    CanvasManager.Instance.SetActiveCanvas(CanvasManager.Instance.previousCanvas,
+                        CanvasManager.Instance.previousButtonIndex, CanvasManager.Instance.previousButtonColumnIndex);
                     TogglePanelUp();
-                    ChangePhase(PreviousPhase);
+                    if (Phase == PhaseOfTurn.Prayer) {
+                        ChangePhase(PhaseOfTurn.SelectPrayer);
+                    } else {
+                        ChangePhase(PhaseOfTurn.SelectItem);
+                    }
                 }
             }
 
             #region Directional Input
             //disable cursor movement on Confirm phase
             if (Phase != PhaseOfTurn.Confirm && inputType == InputType.None || inputType == InputType.Directional) {
+                bool moved = false;
+                bool inRange = false;
                 //handling initial press/joystick move
                 if (directions[(0 + camRotationCounter) % 4](deadZone) && !directions[(2 + camRotationCounter) % 4](deadZone)
                     && isPastHoldTime == false && GetZ(cursor) < terrain.GetComponent<Renderer>().bounds.size.z - 1 && inputType == InputType.None) {
-                    Cursor.GoNorth();
-                    timer += Time.deltaTime;
-                    isPastHoldTime = true;
-                    inputType = InputType.Directional;
+                    if (Cursor.isRestricted) {
+                        Tile t = new Tile(GetX(cursor), GetZ(cursor) + 1);
+                        restrictedCursorRange.ForEach(x => { if (x.SameXY(t)) inRange = true; });
+                        if (inRange) {
+                            Cursor.GoNorth();
+                            moved = true;
+                        }
+                    } else {
+                        Cursor.GoNorth();
+                        moved = true;
+                    }
                 } else if (directions[(2 + camRotationCounter) % 4](deadZone) && !directions[(0 + camRotationCounter) % 4](deadZone)
                     && isPastHoldTime == false && GetZ(cursor) > 0 && inputType == InputType.None) {
-                    Cursor.GoSouth();
-                    timer += Time.deltaTime;
-                    isPastHoldTime = true;
-                    inputType = InputType.Directional;
+                    if (Cursor.isRestricted) {
+                        Tile t = new Tile(GetX(cursor), GetZ(cursor) - 1);
+                        restrictedCursorRange.ForEach(x => { if (x.SameXY(t)) inRange = true; });
+                        if (inRange) {
+                            Cursor.GoSouth();
+                            moved = true;
+                        }
+                    } else {
+                        Cursor.GoSouth();
+                        moved = true;
+                    }
                 } else if (directions[(1 + camRotationCounter) % 4](deadZone) && !directions[(3 + camRotationCounter) % 4](deadZone)
                     && isPastHoldTime == false && GetX(cursor) < terrain.GetComponent<Renderer>().bounds.size.x - 1 && inputType == InputType.None) {
-                    Cursor.GoEast();
-                    timer += Time.deltaTime;
-                    isPastHoldTime = true;
-                    inputType = InputType.Directional;
+                    if (Cursor.isRestricted) {
+                        Tile t = new Tile(GetX(cursor) + 1, GetZ(cursor));
+                        restrictedCursorRange.ForEach(x => { if (x.SameXY(t)) inRange = true; });
+                        if (inRange) {
+                            Cursor.GoEast();
+                            moved = true;
+                        }
+                    } else {
+                        Cursor.GoEast();
+                        moved = true;
+                    }
                 } else if (directions[(3 + camRotationCounter) % 4](deadZone) && !directions[(1 + camRotationCounter) % 4](deadZone)
                     && isPastHoldTime == false && GetX(cursor) > 0 && inputType == InputType.None) {
-                    Cursor.GoWest();
+                    if (Cursor.isRestricted) {
+                        Tile t = new Tile(GetX(cursor) - 1, GetZ(cursor));
+                        restrictedCursorRange.ForEach(x => { if (x.SameXY(t)) inRange = true; });
+                        if (inRange) {
+                            Cursor.GoWest();
+                            moved = true;
+                        }
+                    } else {
+                        Cursor.GoWest();
+                        moved = true;
+                    }
+                }
+                if (moved) {
                     timer += Time.deltaTime;
                     isPastHoldTime = true;
                     inputType = InputType.Directional;
@@ -404,11 +457,14 @@ public class InputManager : MonoBehaviour {
     #region Util Methods
 
     public void PostPhaseEval() {
+        ClearCursorPainters();
+        Cursor.ChangeCursorColors();
+        Cursor.isRestricted = false;
         int bttnIndex = 0;
         if ((int)PreviousPhase == 4) bttnIndex = 1;
         ClearPainters();
-        if (selectedUnit.GetComponent<Unit>().ActiveUnit) {
-            cursorTrans.position = new Vector3(GetX(selectedUnit), GetY(selectedUnit) + 1f, GetZ(selectedUnit));
+        if (SelectedUnit.ActiveUnit) {
+            cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
             CanvasManager.Instance.SetActiveCanvas("action", bttnIndex);
             ChangePhase(PhaseOfTurn.SelectAction);
             TogglePanelUp();
@@ -419,9 +475,9 @@ public class InputManager : MonoBehaviour {
             foreach (Unit unit in unitList) {
                 unit.DeadCheck();
             }
-            activeUnitList.Remove(selectedUnit);
+            activeUnitList.Remove(SelectedUnit);
             GetTurns();
-            selectedUnit = null;
+            SelectedUnit = null;
             cursorTrans.position = new Vector3(GetX(activeUnitList[0]), GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0]));
             selectedTile = null;
             CanvasManager.Instance.SetActiveCanvas("none");
@@ -436,22 +492,23 @@ public class InputManager : MonoBehaviour {
 
     private void PerformAction(UnityEvent action) {
         action.Invoke();
-        selectedUnit.GetComponent<Unit>().HasActed = true;
+        SelectedUnit.HasActed = true;
         PostPhaseEval();
     }
 
     private void PreActionCheck() {
-        if (availableTargets.Exists(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)))) {
-            targetTile = availableTargets.Find(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)));
-            targetUnit = TargetOnTile(targetTile, unitList);
-            if (targetUnit != null) {
+        if (availableTargetTiles.Exists(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)))) {
+            targetUnits = TargetsOnTiles(targetedTiles, unitList);
+            if (targetUnits.Count > 0) {
+                ChangePhase(PhaseOfTurn.Confirm);
+            } else if (Phase == PhaseOfTurn.Prayer) {
                 ChangePhase(PhaseOfTurn.Confirm);
             }
         }
     }
 
     private void SetLastLocation() {
-        lastLocation = new Vector3(GetX(selectedUnit), GetY(selectedUnit), GetZ(selectedUnit));
+        lastLocation = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit), GetZ(SelectedUnit));
     }
 
     public void TogglePanelUp() {

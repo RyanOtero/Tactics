@@ -10,20 +10,23 @@ using static BattleManager;
 
 [CreateAssetMenu(menuName = "ConsumableItem/EffectList")]
 public class ConsumableItemEffectList : ScriptableObject {
-    Unit target { get { return targetUnit.GetComponent<Unit>(); } }
+    List<Unit> targets { get { return targetUnits; } }
 
     public void venison() {
-        target.HP += 20;
+        
+        targets.ForEach(x => x.HP += 20);
     }
 
     public void smellingSalts() {
-        if (target.statusList.Contains(UnitStatus.Fallen)) {
-            target.statusList.Remove(UnitStatus.Fallen);
-            target.HP += 12;
-        }
+        targets.ForEach(x => {
+            if (x.statusList.Contains(UnitStatus.Fallen)) {
+                x.statusList.Remove(UnitStatus.Fallen);
+                x.HP += 12;
+            }
+        });
     }
 
     public void strangeMushroom() {
-        target.Faith += 20;
+        targets.ForEach(x => x.Faith += 20);
     }
 }
