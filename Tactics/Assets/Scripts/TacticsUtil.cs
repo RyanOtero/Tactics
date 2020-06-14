@@ -26,11 +26,19 @@ public static class TacticsUtil {
     public static int CalcXOffset(Tile origin, Tile destination) {
         return Mathf.Abs(destination.x - origin.x);
     }
+    public static int CalcXOffset(GameObject origin, GameObject destination) {
+        return (int)Mathf.Abs(destination.transform.position.x - origin.transform.position.x);
+    }
 
     //calculate z offset from origin to destination
     public static int CalcYOffset(Tile origin, Tile destination) {
         return Mathf.Abs(destination.y - origin.y);
     }
+
+    public static int CalcYOffset(GameObject origin, GameObject destination) {
+        return (int)Mathf.Abs(destination.transform.position.z - origin.transform.position.z);
+    }
+
 
     //shortcut functions for position vectors
     public static float GetX(GameObject go) {

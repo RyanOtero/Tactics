@@ -32,6 +32,11 @@ public static class Extensions {
         }
         return false;
     }
+
+    public static bool SameXZ(this Vector3 v3, Vector3 other) {
+        if (v3.x == other.x && v3.z == other.z) return true;
+        return false;
+    }
     #endregion
 
     #region Int

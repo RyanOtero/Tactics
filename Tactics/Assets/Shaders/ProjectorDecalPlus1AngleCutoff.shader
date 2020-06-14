@@ -79,7 +79,8 @@ Shader "Projector/DecalPlus1AngleCutoff"
 		{
 			tex = tex * _TintColor;
 		}
-		else {
+		else 
+		{
 			tex = float4(0, 0, 0, 1);
 		}
 		

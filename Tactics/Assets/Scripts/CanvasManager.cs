@@ -45,6 +45,7 @@ public class CanvasManager : MonoBehaviour {
     public int previousButtonColumnIndex;
     public GameObject unitInfoPanel;
     public GameObject targetInfoPanel;
+    public GameObject directions;
 
     private int currentResIndex;
     private List<SaveData> saveList;
@@ -197,6 +198,13 @@ public class CanvasManager : MonoBehaviour {
             if (bttn.name == "EndTurn") bttn.confirm.AddListener(() => {
                 BattleManager.SelectedUnit.HasMoved = true;
                 BattleManager.SelectedUnit.HasActed = true;
+                Instance.SetActiveCanvas("none");
+                InputManager.Instance.TogglePanelUp();
+                BattleManager.ChangePhase(PhaseOfTurn.SelectUnit);
+               Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+                Instance.StartCoroutine(CanvasManager.FadeUIElement(null,Instance.unitInfoPanel, false));
+               Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+                Instance.StartCoroutine(CanvasManager.FadeUIElement(null,Instance.targetInfoPanel, false));
                 InputManager.Instance.PostPhaseEval();
             });
 

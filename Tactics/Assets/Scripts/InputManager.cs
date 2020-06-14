@@ -94,27 +94,24 @@ public class InputManager : MonoBehaviour {
             CanvasManager.Instance.NavMenu();
             CanvasManager.Instance.NavHorizontalMenu();
             CanvasManager.Instance.NavOptions();
-            Cursor.Instance.CursorPainterNullCheck();
             //Handle first frame after selecting an item in menu
             if (Phase == PhaseOfTurn.Attack && !isPaused) {
                 SetLastLocation();
-                availableTargetTiles = GetTargetRange(SelectedUnit, true, false);
+                availableTargetTiles = GetAvailableTargetRange(SelectedUnit, true, false);
                 PaintRange(availableTargetTiles, "Prefab/Painters/AttackPainter");
                 Cursor.ChangeCursorColors(true);
                 TogglePanelUp();
                 CanvasManager.Instance.SetActiveCanvas("none");
             } else if ((Phase == PhaseOfTurn.Prayer || Phase == PhaseOfTurn.Item) && !isPaused) {
                 SetLastLocation();
-                availableTargetTiles = GetTargetRange(SelectedUnit, false, false);
-                targetedTiles = GetTargetedTiles();
+                availableTargetTiles = GetAvailableTargetRange(SelectedUnit, false, false);
                 PaintRange(availableTargetTiles, "Prefab/Painters/ActionPainter");
-                PaintCursorRange(targetedTiles, "Prefab/Painters/CursorPainter");
+                PaintCursorRange(GetTargetedTiles(), "Prefab/Painters/CursorPainter");
                 Cursor.ChangeCursorColors(true);
                 TogglePanelUp();
                 CanvasManager.Instance.SetActiveCanvas("none");
             } else if (Phase == PhaseOfTurn.Move && !isPaused) {
                 SetLastLocation();
-                Cursor.ChangeCursorColors();
                 PathNavigationController.startRotation = SelectedUnit.transform.eulerAngles;
                 availableMoves = GetMoveRange(SelectedUnit);
                 PaintRange(availableMoves, "Prefab/Painters/MovePainter");
@@ -177,6 +174,7 @@ public class InputManager : MonoBehaviour {
                     }
                     //actions go to confirm phase
                 } else if (Phase == PhaseOfTurn.Attack) {
+                    Cursor.ChangeCursorColors(true);
                     PreActionCheck();
                 } else if (Phase == PhaseOfTurn.Prayer) {
                     PreActionCheck();
@@ -202,6 +200,12 @@ public class InputManager : MonoBehaviour {
                         SelectedUnit.HasMoved = true;
                         PostPhaseEval();
                     }
+                } else if (Phase == PhaseOfTurn.PickDirection) {
+                    SelectedUnit.transform.eulerAngles = new Vector3(0, CanvasManager.Instance.directions.transform.rotation.eulerAngles.y, 0);
+                    Destroy(CanvasManager.Instance.directions);
+                    SelectedUnit.pickedDirection = true;
+                    cursor.transform.Find("CursorFlag").gameObject.SetActive(true);
+                    PostPhaseEval();
                 }
             }
 
@@ -237,6 +241,7 @@ public class InputManager : MonoBehaviour {
                     cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
                     ClearPainters();
                     ClearCursorPainters();
+                    Cursor.ChangeCursorColors();
                     Cursor.isRestricted = false;
                     CanvasManager.Instance.SetActiveCanvas(CanvasManager.Instance.previousCanvas,
                         CanvasManager.Instance.previousButtonIndex, CanvasManager.Instance.previousButtonColumnIndex);
@@ -250,8 +255,8 @@ public class InputManager : MonoBehaviour {
             }
 
             #region Directional Input
-            //disable cursor movement on Confirm phase
-            if (Phase != PhaseOfTurn.Confirm && inputType == InputType.None || inputType == InputType.Directional) {
+            //disable cursor movement on Confirm and PickDirection phases
+            if (Phase != PhaseOfTurn.Confirm && Phase != PhaseOfTurn.PickDirection && inputType == InputType.None || inputType == InputType.Directional) {
                 bool moved = false;
                 bool inRange = false;
                 //handling initial press/joystick move
@@ -335,6 +340,21 @@ public class InputManager : MonoBehaviour {
                             Cursor.GoWest();
                         }
                     }
+                }
+            }
+            if (Phase == PhaseOfTurn.PickDirection) {
+
+                if (CanvasManager.Instance.directions == null) {
+                    CanvasManager.Instance.directions = Instantiate(Resources.Load<GameObject>("Prefab/Direction"), SelectedUnit.transform.position, Quaternion.identity, SelectedUnit.transform);
+                }
+                if (directions[(0 + camRotationCounter) % 4](deadZone) && !directions[(2 + camRotationCounter) % 4](deadZone)) {
+                    CanvasManager.Instance.directions.transform.eulerAngles = new Vector3(0, 0, 0);
+                } else if (directions[(2 + camRotationCounter) % 4](deadZone) && !directions[(0 + camRotationCounter) % 4](deadZone)) {
+                    CanvasManager.Instance.directions.transform.eulerAngles = new Vector3(0, 180f, 0);
+                } else if (directions[(1 + camRotationCounter) % 4](deadZone) && !directions[(3 + camRotationCounter) % 4](deadZone)) {
+                    CanvasManager.Instance.directions.transform.eulerAngles = new Vector3(0, 90, 0);
+                } else if (directions[(3 + camRotationCounter) % 4](deadZone) && !directions[(1 + camRotationCounter) % 4](deadZone)) {
+                    CanvasManager.Instance.directions.transform.eulerAngles = new Vector3(0, -90, 0);
                 }
             }
             //Stop moving
@@ -463,6 +483,7 @@ public class InputManager : MonoBehaviour {
         int bttnIndex = 0;
         if ((int)PreviousPhase == 4) bttnIndex = 1;
         ClearPainters();
+
         if (SelectedUnit.ActiveUnit) {
             cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
             CanvasManager.Instance.SetActiveCanvas("action", bttnIndex);
@@ -471,22 +492,30 @@ public class InputManager : MonoBehaviour {
             CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
             Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
         } else {
-            unitList.RemoveAll(x => x == null);
-            foreach (Unit unit in unitList) {
-                unit.DeadCheck();
+            if (SelectedUnit.pickedDirection) {
+                unitList.RemoveAll(x => x == null);
+                foreach (Unit unit in unitList) {
+                    unit.DeadCheck();
+                }
+                activeUnitList.Remove(SelectedUnit);
+                GetTurns();
+                SelectedUnit.pickedDirection = false;
+                SelectedUnit = null;
+                cursorTrans.position = new Vector3(GetX(activeUnitList[0]), GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0]));
+                selectedTile = null;
+                CanvasManager.Instance.SetActiveCanvas("none");
+                if (Phase == PhaseOfTurn.SelectAction) TogglePanelUp();
+                ChangePhase(PhaseOfTurn.SelectUnit);
+                CanvasManager.Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+                Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.unitInfoPanel, false));
+                CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
+                Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
+            } else {
+                ChangePhase(PhaseOfTurn.PickDirection);
+                cursorTrans.position = new Vector3(GetX(SelectedUnit), GetY(SelectedUnit) + 1f, GetZ(SelectedUnit));
+                cursor.transform.Find("CursorFlag").gameObject.SetActive(false);
+
             }
-            activeUnitList.Remove(SelectedUnit);
-            GetTurns();
-            SelectedUnit = null;
-            cursorTrans.position = new Vector3(GetX(activeUnitList[0]), GetY(activeUnitList[0]) + 1f, GetZ(activeUnitList[0]));
-            selectedTile = null;
-            CanvasManager.Instance.SetActiveCanvas("none");
-            if (Phase == PhaseOfTurn.SelectAction) TogglePanelUp();
-            ChangePhase(PhaseOfTurn.SelectUnit);
-            CanvasManager.Instance.unitInfoPanel.GetComponent<UnitInfoPanel>().Clear();
-            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.unitInfoPanel, false));
-            CanvasManager.Instance.targetInfoPanel.GetComponent<UnitInfoPanel>().Clear();
-            Instance.StartCoroutine(CanvasManager.FadeUIElement(null, CanvasManager.Instance.targetInfoPanel, false));
         }
     }
 
@@ -497,6 +526,7 @@ public class InputManager : MonoBehaviour {
     }
 
     private void PreActionCheck() {
+        targetedTiles = GetTargetedTiles();
         if (availableTargetTiles.Exists(x => (x.x == GetX(cursor)) && (x.y == GetZ(cursor)))) {
             targetUnits = TargetsOnTiles(targetedTiles, unitList);
             if (targetUnits.Count > 0) {

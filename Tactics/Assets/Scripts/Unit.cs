@@ -67,7 +67,7 @@ public class Unit : MonoBehaviour {
     [SerializeField]
     public List<string> prayers;
     public int itemReach;
-
+    public bool pickedDirection;
 
     public int SpeedCounter {
         get {

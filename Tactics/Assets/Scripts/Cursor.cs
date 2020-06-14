@@ -31,31 +31,20 @@ public class Cursor : MonoBehaviour {
         ctile = null;
         ltile = null;
     }
-    public void CursorPainterNullCheck() {
-        GameObject[] painters = GameObject.FindGameObjectsWithTag("CursorPainter");
-        if (painters.Length == 0) {
-            Instantiate(Resources.Load<GameObject>("Prefab/Painters/CursorPainter"), new Vector3(transform.position.x, 10f, transform.position.z), Quaternion.Euler(90, 0, 0), transform);
-        }
-    }
 
     public static void ChangeCursorColors(bool isYellow = false) {
-        Instance.CursorPainterNullCheck();
         Color flagColor;
-        Texture primary;
-        Texture secondary;
+        Color projectorColor;
         if (!isYellow) {
-            flagColor = new Color(0.02745098f, 0.3058824f, 0.9647059f);
-            primary = Resources.Load<Texture>("Textures/MediumBlue");
-            secondary = Resources.Load<Texture>("Textures/LightBlue");
+            flagColor = new Color(0.027f, 0.378f, 0.943f);
+            projectorColor = new Color(.434f, .533f, .766f);
 
         } else {
             flagColor = new Color(1f, 1f, 0f);
-            primary = Resources.Load<Texture>("Textures/DarkYellow");
-            secondary = Resources.Load<Texture>("Textures/LightYellow");
+            projectorColor = new Color(.719f, .738f, .323f);
         }
         Instance.cursorFlag.GetComponent<Renderer>().material.color = flagColor;
-        Instance.painterMaterial.SetTexture("_PrimaryTex", primary);
-        Instance.painterMaterial.SetTexture("_SecondaryTex", secondary);
+        Instance.painterMaterial.SetColor("_PrimaryTintColor", projectorColor);
     }
 
 

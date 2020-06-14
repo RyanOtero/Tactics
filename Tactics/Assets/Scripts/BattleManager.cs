@@ -11,7 +11,7 @@ using System.Linq;
 //todo: player direction during movement, Character Builder, context menu, unit classes, AI
 
 
-public enum PhaseOfTurn { None, SelectUnit, Confirm, SelectAction, Move, Attack, Prayer, Item, SelectPrayer, SelectItem, UnitInfo }
+public enum PhaseOfTurn { None, SelectUnit, Confirm, SelectAction, Move, Attack, Prayer, Item, SelectPrayer, SelectItem, UnitInfo, PickDirection }
 
 public sealed class BattleManager : MonoBehaviour {
     public static BattleManager Instance { get; private set; } = null;
@@ -195,7 +195,7 @@ public sealed class BattleManager : MonoBehaviour {
 
     public static void ClearCursorPainters() {
         foreach (GameObject ptr in GameObject.FindGameObjectsWithTag("CursorPainter")) {
-            Destroy(ptr);
+           if (!ptr.transform.position.SameXZ(cursor.transform.position)) Destroy(ptr);
         }
     }
 
@@ -256,6 +256,9 @@ public sealed class BattleManager : MonoBehaviour {
                 break;
             case PhaseOfTurn.UnitInfo:
                 Instance.phaseLabel.text = "Unit Info";
+                break;
+            case PhaseOfTurn.PickDirection:
+                Instance.phaseLabel.text = "Pick Direction";
                 break;
             case PhaseOfTurn.None:
             default:
@@ -428,6 +431,21 @@ public sealed class BattleManager : MonoBehaviour {
         }
     }
 
+    public static void RotateUnit(Unit selectedUnit, GameObject cursor) {
+        if (CalcXOffset(selectedUnit.gameObject, cursor) > CalcYOffset(selectedUnit.gameObject, cursor)) {
+            if (selectedUnit.transform.position.x > cursor.transform.position.x) {
+                selectedUnit.transform.eulerAngles = new Vector3(0, -90f, 0);
+            } else if (selectedUnit.transform.position.x < cursor.transform.position.x) {
+                selectedUnit.transform.eulerAngles = new Vector3(0, 90f, 0);
+            }
+        } else if (CalcXOffset(selectedUnit.gameObject, cursor) < CalcYOffset(selectedUnit.gameObject, cursor)) {
+            if (selectedUnit.transform.position.z > cursor.transform.position.z) {
+                selectedUnit.transform.eulerAngles = new Vector3(0, 180f, 0);
+            } else if (selectedUnit.transform.position.z < cursor.transform.position.z) {
+                selectedUnit.transform.eulerAngles = new Vector3(0, 0, 0);
+            }
+        }
+    }
 
     private static void GetAdjacency(List<Tile> list, Unit unit) {
         for (int a = 0; a < list.Count; a++) {
@@ -478,18 +496,16 @@ public sealed class BattleManager : MonoBehaviour {
 
         List<Tile> tTiles = new List<Tile>();
         //Grid size: i is x-axis,  j is z-axis
-        for (int i = 0; i < Instance.prayerEffectReach * 2 + 1; i++) {
-            for (int j = 0; j < Instance.prayerEffectReach * 2 + 1; j++) {
-                Tile t = new Tile(GetX(cursor) + i - Instance.prayerEffectReach, GetZ(cursor) + j - Instance.prayerEffectReach);
+        for (int i = 0; i < tReach * 2 + 1; i++) {
+            for (int j = 0; j < tReach * 2 + 1; j++) {
+                Tile t = new Tile(GetX(cursor) + i - tReach, GetZ(cursor) + j - tReach);
                 tTiles.Add(t);
-                //GameObject n = GameObject.Instantiate(Resources.Load("Prefab/Number"), new Vector3(t.x, t.height + .05f, t.y), Quaternion.Euler(90, 0, 0)) as GameObject;
-                //n.GetComponent<TextMesh>().text = string.Format("{0}, {1}", i, j);
             }
         }
 
         tTiles.ForEach(t => {
-            int x = t.x - (int)GetX(cursor);
-            int y = t.y - (int)GetZ(cursor);
+            int x = t.x - cursorLocation.x;
+            int y = t.y - cursorLocation.y;
             int inner = tReach - bThickness;
 
             switch (targetStyle) {
@@ -521,7 +537,7 @@ public sealed class BattleManager : MonoBehaviour {
         return effectTargetRange;
     }
 
-    public static List<Tile> GetTargetRange(Unit unit, bool removePlayer, bool removeEnemy) {
+    public static List<Tile> GetAvailableTargetRange(Unit unit, bool removePlayer, bool removeEnemy) {
         //get variables
         int tReach;
         TargetStyle targetStyle;
@@ -608,6 +624,7 @@ public sealed class BattleManager : MonoBehaviour {
     public static void Attack() {
         Unit sUnit = SelectedUnit;
         List<Unit> tUnits = targetUnits;
+        RotateUnit(sUnit, cursor);
         int damage = 0;
         //play attack animation
         Random.InitState((int)Time.time);

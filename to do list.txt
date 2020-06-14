@@ -13,8 +13,3 @@ Travel
 	add equipment menu
 
 Done
-add prayer target effect area
-
-Colors
-0.9075461f, 0.945098f, 0.3818197f
-1f, 1f, 0f
