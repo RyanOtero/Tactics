@@ -1,7 +1,7 @@
 to do list
 
 Battle
-	Pick direction at end turn
+
 	implement multiple height tiles
 	add unit expanded info?? undecided
 	
@@ -13,3 +13,4 @@ Travel
 	add equipment menu
 
 Done
+	Pick direction at end turn

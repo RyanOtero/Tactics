@@ -58,6 +58,7 @@ public class CanvasManager : MonoBehaviour {
             Instance = this;
         }
         resolutions = null;
+        if (fadeSpeed == 0) fadeSpeed = 5f;
     }
 
     void OnEnable() {
@@ -69,8 +70,11 @@ public class CanvasManager : MonoBehaviour {
         //setup for main menu/pause menu
         maxButtonIndex = 3;
         saveList = null;
-        if (SceneManager.GetActiveScene().name == "MainMenu") activeCanvas = GetCanvas("main");
-        Cursor.ChangeCursorColors();
+        if (SceneManager.GetActiveScene().name == "MainMenu") {
+            activeCanvas = GetCanvas("main");
+        } else {
+            Cursor.ChangeCursorColors();
+        }
     }
 
     void Update() {
@@ -91,7 +95,7 @@ public class CanvasManager : MonoBehaviour {
         Time.timeScale = 1;
         transition.GetComponent<Animator>().SetTrigger("FadeOut");
         yield return new WaitForSeconds(1f);
-        ToggleInputLock();
+        ToggleInputLock(); 
         Application.Quit();
     }
 
@@ -158,14 +162,15 @@ public class CanvasManager : MonoBehaviour {
         previousButtonIndex = buttonIndex;
         SavePreviousCanvasName();
         buttonIndex = 0;
-        GameObject canvasToSwitchTo = null;
+        GameObject canvasToSwitchTo;
         InputManager.CleanButtonList();
         canvasToSwitchTo = GetCanvas(canvasTypeToSwitchTo);
-        StartCoroutine(FadeUIElement(canvasToSwitchTo, activeCanvas));
         canvasToDestroy = activeCanvas;
         activeCanvas = canvasToSwitchTo;
         CanvasGroup cg = activeCanvas.GetComponent<CanvasGroup>();
+        CanvasGroup cgDestroy = canvasToDestroy.GetComponent<CanvasGroup>();
         if (cg != null) cg.alpha = 1;
+        if (cgDestroy != null) cgDestroy.alpha = 0;
     }
 
 

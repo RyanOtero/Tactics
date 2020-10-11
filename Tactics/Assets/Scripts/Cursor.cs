@@ -10,7 +10,7 @@ public class Cursor : MonoBehaviour {
     public static Tile ctile;
     public static Tile ltile;
     public Material painterMaterial;
-    public GameObject cursorFlag;
+    public GameObject CursorOrb;
     public static bool isRestricted;
 
 
@@ -33,17 +33,17 @@ public class Cursor : MonoBehaviour {
     }
 
     public static void ChangeCursorColors(bool isYellow = false) {
-        Color flagColor;
+        Color orb;
         Color projectorColor;
         if (!isYellow) {
-            flagColor = new Color(0.027f, 0.378f, 0.943f);
+            orb = new Color(0.027f, 0.378f, 0.943f);
             projectorColor = new Color(.434f, .533f, .766f);
 
         } else {
-            flagColor = new Color(1f, 1f, 0f);
+            orb = new Color(1f, 1f, 0f);
             projectorColor = new Color(.719f, .738f, .323f);
         }
-        Instance.cursorFlag.GetComponent<Renderer>().material.color = flagColor;
+        Instance.CursorOrb.GetComponent<Renderer>().sharedMaterial.color = orb;
         Instance.painterMaterial.SetColor("_PrimaryTintColor", projectorColor);
     }
 

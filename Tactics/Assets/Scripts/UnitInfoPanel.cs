@@ -5,16 +5,16 @@ using TMPro;
 public class UnitInfoPanel : MonoBehaviour
 {
     public Unit unit;
-    public bool wasNull;
+    public bool isOutOfDate;
     void Start()
     {
-        wasNull = false;
+        isOutOfDate = false;
     }
 
     void Update()
     {
-        if (!wasNull && unit != null) wasNull = true;
-        if (wasNull && unit != null) {
+        if (!isOutOfDate && unit != null) isOutOfDate = true;
+        if (isOutOfDate && unit != null) {
             transform.Find("UnitName").GetComponent<TextMeshProUGUI>().text = unit.unitName;
             transform.Find("HPLabel").GetComponent<TextMeshProUGUI>().text = "HP: " + unit.HP + "/" + unit.maxHp;
             transform.Find("FaithLabel").GetComponent<TextMeshProUGUI>().text = "Faith: " + unit.Faith + "/" + unit.maxFaith;
@@ -27,7 +27,7 @@ public class UnitInfoPanel : MonoBehaviour
             }
             if (sList != "") sList = sList.Substring(0, sList.Length - 3);
             transform.Find("Status").GetComponent<TextMeshProUGUI>().text = sList;
-            wasNull = false;
+            isOutOfDate = false;
         }
     }
 
